@@ -122,7 +122,7 @@ class RobotShortObjectMemory(object):
         #print(new_object)
         self.add_object_to_memory(new_object)
         
-        print(len(self.memory))
+        #print(len(self.memory))
         
     def add_object_to_memory(self, new_object):
         if len(self.memory) == 0:
