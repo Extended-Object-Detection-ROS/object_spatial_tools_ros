@@ -19,6 +19,8 @@ class RobotShortObjectMemory(object):
         self.score_coefficients = np.array([1,1,1,1])
         
         self.score_multiplyer = rospy.get_param('~score_multiplyer', 2)
+        update_rate_hz = rospy.get_param('~update_rate_hz', 5)
+        self.forget_time = rospy.Duration(rospy.get_param('~forget_time', 10))
         
         self.update_count_thresh = rospy.get_param('~update_count_thresh', 0)
                
@@ -35,59 +37,98 @@ class RobotShortObjectMemory(object):
             occurr: int
             stamp: ros time
             changed: bool
+            forgoten: bool
         '''
         self.memory = []
         
         self.marker_pub = rospy.Publisher('~memory_map', Marker, queue_size = 10)
         
+        rospy.Timer(rospy.Duration(1/update_rate_hz), self.update_cb)
+        
         rospy.Subscriber('simple_objects', SimpleObjectArray, self.sobject_cb)
         rospy.Subscriber('complex_objects', ComplexObjectArray, self.cobject_cb)
+        
+    def update_cb(self, event):
+        now = rospy.Time.now()
+        
+        del_indexes = []
+        
+        for i, obj in enumerate(self.memory):
+            if obj['forgoten']:
+                obj['occurr'] = obj['occurr'] - 1
+                if obj['occurr'] <= 0:
+                    del_indexes.append(i)
+                #obj['changed'] = True
+            else:
+                if (now - obj['stamp']) > self.forget_time:
+                    obj['forgoten'] = True
+                    #obj['changed'] = True
+            
+                
+        
+        for index in sorted(del_indexes, reverse=True):
+            del self.memory[index]
+                        
+        self.publish_memory_as_markers()
         
     def publish_memory_as_markers(self):
         now = rospy.Time.now()
         for i, obj in enumerate(self.memory):
-            if obj['changed']:
-                obj['changed'] = False
+            #if obj['changed']:
+                #obj['changed'] = False
                 
-                marker_msg = Marker()
-                marker_msg.header.frame_id = self.target_frame
-                marker_msg.header.stamp = now
-                
-                marker_msg.id = i
-                marker_msg.ns = 'cylinder'
-                marker_msg.action = Marker.ADD
-                marker_msg.type = Marker.CYLINDER
-                marker_msg.pose.position = obj['pose'].position
-                marker_msg.pose.orientation.w = 1
-                #marker_msg.color.b = 1
+            marker_msg = Marker()
+            marker_msg.header.frame_id = self.target_frame
+            marker_msg.header.stamp = now
+            
+            marker_msg.id = i
+            marker_msg.ns = 'cylinder'
+            marker_msg.action = Marker.ADD
+            marker_msg.type = Marker.CYLINDER
+            marker_msg.pose.position = obj['pose'].position
+            marker_msg.pose.orientation.w = 1
+            #marker_msg.color.b = 1
+            if obj['forgoten']:
+                marker_msg.color.r = 1
+                marker_msg.color.g = 1
+                marker_msg.color.b = 1
+                marker_msg.color.a = 0.25
+            else:
                 marker_msg.color.g = 1
                 marker_msg.color.a = 1
-                marker_msg.scale.x = obj['volume']['radius'] * 2
-                marker_msg.scale.y = obj['volume']['radius'] * 2
-                marker_msg.scale.z = obj['volume']['height']
-                
-                self.marker_pub.publish(marker_msg)
-                
-                marker_msg = Marker()
-                marker_msg.header.frame_id = self.target_frame
-                marker_msg.header.stamp = now
-                marker_msg.id = i
-                marker_msg.ns = 'text'
-                marker_msg.action = Marker.ADD
-                marker_msg.type = Marker.TEXT_VIEW_FACING
-                
-                marker_msg.pose.position = obj['pose'].position
-                marker_msg.pose.position.z += obj['volume']['radius'] * 4
-                marker_msg.pose.orientation.w = 1
-                
-                #marker_msg.color.b = 1
+            marker_msg.scale.x = obj['volume']['radius'] * 2
+            marker_msg.scale.y = obj['volume']['radius'] * 2
+            marker_msg.scale.z = obj['volume']['height']
+            
+            self.marker_pub.publish(marker_msg)
+            
+            marker_msg = Marker()
+            marker_msg.header.frame_id = self.target_frame
+            marker_msg.header.stamp = now
+            marker_msg.id = i
+            marker_msg.ns = 'text'
+            marker_msg.action = Marker.ADD
+            marker_msg.type = Marker.TEXT_VIEW_FACING
+            
+            marker_msg.pose.position.x = obj['pose'].position.x
+            marker_msg.pose.position.y = obj['pose'].position.y
+            marker_msg.pose.position.z = obj['pose'].position.z + obj['volume']['height'] * 4
+            #marker_msg.pose.position.z = marker_msg.pose.position.z + obj['volume']['height'] * 4
+            marker_msg.pose.orientation.w = 1
+            
+            if obj['forgoten']:
+                marker_msg.color.r = 1
+                marker_msg.color.g = 1
+                marker_msg.color.b = 1
+                marker_msg.color.a = 0.25
+            else:
                 marker_msg.color.g = 1
                 marker_msg.color.a = 1
-                
-                marker_msg.scale.z = 0.1
-                marker_msg.text = f"{obj['type']} {obj['sub_type']} {obj['occurr']}"
-                
-                self.marker_pub.publish(marker_msg)
+            
+            marker_msg.scale.z = 0.1
+            marker_msg.text = f"{obj['type']}({obj['sub_type']}) {obj['occurr']}"
+            
+            self.marker_pub.publish(marker_msg)
                 
                 
         
@@ -98,7 +139,7 @@ class RobotShortObjectMemory(object):
         transform = self.get_common_transform(msg.header)
         for obj in msg.complex_objects:
             self.proceed_object(msg.header, obj, transform)
-        self.publish_memory_as_markers()
+        
     
     def proceed_object(self, header, object_, transform):
         
@@ -118,6 +159,7 @@ class RobotShortObjectMemory(object):
         new_object['occurr'] = 1
         new_object['stamp'] = header.stamp
         new_object['changed'] = True
+        new_object['forgoten'] = False
         
         #print(new_object)
         self.add_object_to_memory(new_object)
@@ -175,6 +217,7 @@ class RobotShortObjectMemory(object):
                             
                         same_sub_types[min_score_ind]['changed'] = True
                         same_sub_types[min_score_ind]['occurr']+=1
+                        same_sub_types[min_score_ind]['forgoten'] = False
                         
                     else:
                         self.memory.append(new_object)
