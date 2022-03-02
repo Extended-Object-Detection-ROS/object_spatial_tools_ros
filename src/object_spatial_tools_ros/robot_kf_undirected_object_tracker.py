@@ -6,6 +6,7 @@ from object_spatial_tools_ros.utils import obj_transform_to_pose, get_common_tra
 import tf2_geometry_msgs
 import tf2_ros
 import numpy as np
+from visualization_msgs.msg import Marker, MarkerArray
 
 class SingleKFUndirectedObjectTracker(object):
     
@@ -90,6 +91,8 @@ class RobotKFUndirectedObjectTracker(object):
         
         update_rate_hz = rospy.get_param('~update_rate_hz', 5)
         
+        self.vis_pub = rospy.Publisher('~vis', MarkerArray, queue_size = 1)
+        
         #rospy.Subscriber('simple_objects', SimpleObjectArray, self.sobject_cb)
         rospy.Subscriber('complex_objects', ComplexObjectArray, self.cobject_cb)
         
@@ -103,6 +106,38 @@ class RobotKFUndirectedObjectTracker(object):
         
                 rospy.logwarn(f"{name} {i} {kf.x} {kf.P}")
                 
+        self.to_marker_array()
+                
+    def to_marker_array(self):
+        now = rospy.Time.now()
+        marker_array = MarkerArray()
+        for name, kfs in self.objects_to_KFs.items():
+            for i, kf in enumerate(kfs):
+                marker = Marker()
+                
+                marker.header.stamp = now
+                marker.header.frame_id = self.target_frame
+                
+                marker.ns = name
+                marker.id = i
+                
+                marker.type = Marker.CYLINDER
+                marker.action = Marker.ADD
+                
+                marker.pose.position.x = kf.x[0]
+                marker.pose.position.y = kf.x[1]                
+                marker.pose.orientation.w = 0
+                
+                marker.color.r = 1
+                marker.color.a = 1
+                
+                marker.scale.x = 0.1
+                marker.scale.y = 0.1
+                marker.scale.z = 0.01
+                
+                marker_array.markers.append(marker)
+                
+        self.vis_pub.publish(marker_array)
         
         
     def cobject_cb(self, msg):

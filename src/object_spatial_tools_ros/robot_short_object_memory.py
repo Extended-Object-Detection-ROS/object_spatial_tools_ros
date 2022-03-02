@@ -130,9 +130,7 @@ class RobotShortObjectMemory(object):
             marker_msg.text = f"{obj['type']}({obj['sub_type']}) {obj['occurr']}"
             
             self.marker_pub.publish(marker_msg)
-                
-                
-        
+                                        
     def sobject_cb(self, msg):
         pass
         
@@ -163,8 +161,7 @@ class RobotShortObjectMemory(object):
         new_object['forgoten'] = False
         
         #print(new_object)
-        self.add_object_to_memory(new_object)
-        
+        self.add_object_to_memory(new_object)        
         #print(len(self.memory))
         
     def add_object_to_memory(self, new_object):
