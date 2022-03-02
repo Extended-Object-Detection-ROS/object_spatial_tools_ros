@@ -2,7 +2,7 @@
 
 import rospy
 from extended_object_detection.msg import SimpleObjectArray, ComplexObjectArray
-from object_spatial_tools_ros.utils import obj_transform_to_pose, get_common_transform
+from object_spatial_tools_ros.utils import obj_transform_to_pose, get_common_transform, get_cov_ellipse_params, quaternion_msg_from_yaw
 import tf2_geometry_msgs
 import tf2_ros
 import numpy as np
@@ -126,14 +126,17 @@ class RobotKFUndirectedObjectTracker(object):
                 
                 marker.pose.position.x = kf.x[0]
                 marker.pose.position.y = kf.x[1]                
-                marker.pose.orientation.w = 0
+                
                 
                 marker.color.r = 1
-                marker.color.a = 1
+                marker.color.a = 0.5
                 
-                marker.scale.x = 0.1
-                marker.scale.y = 0.1
+                r1, r2, th = get_cov_ellipse_params(kf.P[:2,:2])
+                
+                marker.scale.x = r1
+                marker.scale.y = r2
                 marker.scale.z = 0.01
+                marker.pose.orientation = quaternion_msg_from_yaw(th)
                 
                 marker_array.markers.append(marker)
                 
