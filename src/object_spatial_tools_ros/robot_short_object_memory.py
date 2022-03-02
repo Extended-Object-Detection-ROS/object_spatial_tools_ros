@@ -6,6 +6,7 @@ import tf2_geometry_msgs
 from geometry_msgs.msg import PoseStamped
 import numpy as np
 from visualization_msgs.msg import Marker
+from object_spatial_tools_ros.utils import obj_transform_to_pose, get_common_transform
 
 class RobotShortObjectMemory(object):
     
@@ -136,7 +137,7 @@ class RobotShortObjectMemory(object):
         pass
         
     def cobject_cb(self, msg):
-        transform = self.get_common_transform(msg.header)
+        transform = get_common_transform(self.tf_buffer, msg.header, self.target_frame)
         for obj in msg.complex_objects:
             self.proceed_object(msg.header, obj, transform)
         
@@ -221,39 +222,7 @@ class RobotShortObjectMemory(object):
                         
                     else:
                         self.memory.append(new_object)
-                        
                     
-                    
-            
-        
-    def get_common_transform(self, msg_header):
-        transform = self.tf_buffer.lookup_transform(self.target_frame,
-                                       # source frame:
-                                       msg_header.frame_id,
-                                       # get the tf at the time the pose was valid
-                                       msg_header.stamp,
-                                       # wait for at most 1 second for transform, otherwise throw
-                                       rospy.Duration(1.0))
-        #print(transform)
-        return transform
     
     def run(self):
         rospy.spin()
-        
-def obj_transform_to_pose(transform, header):
-    #print(transform)
-    ps = PoseStamped()
-    ps.header = header
-    ps.pose.orientation = transform.rotation
-    ps.pose.position.x = transform.translation.x
-    ps.pose.position.y = transform.translation.y
-    ps.pose.position.z = transform.translation.z
-    return ps
-    
-        
-        
-        
-        
-        
-        
-        
