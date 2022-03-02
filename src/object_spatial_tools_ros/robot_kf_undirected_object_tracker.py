@@ -5,6 +5,7 @@ from extended_object_detection.msg import SimpleObjectArray, ComplexObjectArray
 from object_spatial_tools_ros.utils import obj_transform_to_pose, get_common_transform
 import tf2_geometry_msgs
 import tf2_ros
+import numpy as np
 
 class SingleKFUndirectedObjectTracker(object):
     
@@ -89,7 +90,7 @@ class RobotKFUndirectedObjectTracker(object):
         
         update_rate_hz = rospy.get_param('~update_rate_hz', 5)
         
-        rospy.Subscriber('simple_objects', SimpleObjectArray, self.sobject_cb)
+        #rospy.Subscriber('simple_objects', SimpleObjectArray, self.sobject_cb)
         rospy.Subscriber('complex_objects', ComplexObjectArray, self.cobject_cb)
         
         rospy.Timer(rospy.Duration(1/update_rate_hz), self.process)
@@ -117,7 +118,7 @@ class RobotKFUndirectedObjectTracker(object):
                 
                 ps_transformed = tf2_geometry_msgs.do_transform_pose(ps, transform).pose
                 
-                ps_np = np.array([ps_transformed.position.x, ps_transformed.y])
+                ps_np = np.array([ps_transformed.position.x, ps_transformed.position.y])
                 
                 if obj.type_name in detected_objects:
                     detected_objects[obj.type_name].append(ps_np)
@@ -132,7 +133,7 @@ class RobotKFUndirectedObjectTracker(object):
                 for pose in poses:                
                     self.objects_to_KFs[obj.type_name].append(SingleKFUndirectedObjectTracker(pose, now, self.Qdiag, self.Rdiag, self.k_decay))
             else:
-                self.objects_to_KFs[obj.type_name].update(poses[0], now)
+                self.objects_to_KFs[obj.type_name][0].update(poses[0], now)
                         
         
     def run(self):
