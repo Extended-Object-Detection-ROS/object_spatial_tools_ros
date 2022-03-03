@@ -41,14 +41,14 @@ class SingleKFUndirectedObjectTracker(object):
         dt = t - max(self.last_t, self.last_upd_t)
         self.last_t = t
         
-        self.F = np.array([[1, 0, dt ,0],
+        F = np.array([[1, 0, dt ,0],
                            [0, 1, 0 ,dt],
                            [0, 0, self.k_decay, 0],
                            [0, 0, 0, self.k_decay]])
         
-        self.x = np.dot(self.F, self.x)
+        self.x = np.dot(F, self.x)
         
-        self.P = np.dot( np.dot(self.F, self.P), self.F.T) + self.Q
+        self.P = np.dot( np.dot(F, self.P), F.T) + self.Q
         
             
     '''
@@ -113,12 +113,39 @@ class RobotKFUndirectedObjectTracker(object):
         marker_array = MarkerArray()
         for name, kfs in self.objects_to_KFs.items():
             for i, kf in enumerate(kfs):
+                # POSE AND SPEED
                 marker = Marker()
                 
                 marker.header.stamp = now
                 marker.header.frame_id = self.target_frame
                 
-                marker.ns = name
+                marker.ns = name+"_pose"
+                marker.id = i
+                
+                marker.type = Marker.ARROW
+                marker.action = Marker.ADD
+                
+                marker.pose.position.x = kf.x[0]
+                marker.pose.position.y = kf.x[1]                                                
+                
+                marker.pose.orientation = quaternion_msg_from_yaw(np.arctan2(kf.x[3], kf.x[2]))
+                                
+                marker.color.r = 1
+                marker.color.a = 1
+                
+                marker.scale.x = np.hypot(kf.x[3], kf.x[2])
+                marker.scale.y = 0.01
+                marker.scale.z = 0.01
+                
+                marker_array.markers.append(marker)
+                
+                # COV ELLIPSE
+                marker = Marker()
+                
+                marker.header.stamp = now
+                marker.header.frame_id = self.target_frame
+                
+                marker.ns = name+"_el"
                 marker.id = i
                 
                 marker.type = Marker.CYLINDER
@@ -126,9 +153,9 @@ class RobotKFUndirectedObjectTracker(object):
                 
                 marker.pose.position.x = kf.x[0]
                 marker.pose.position.y = kf.x[1]                
-                
-                
+                                
                 marker.color.r = 1
+                marker.color.b = 1
                 marker.color.a = 0.5
                 
                 r1, r2, th = get_cov_ellipse_params(kf.P[:2,:2])
