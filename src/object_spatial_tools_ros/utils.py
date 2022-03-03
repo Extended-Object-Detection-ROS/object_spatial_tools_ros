@@ -56,3 +56,39 @@ def quaternion_msg_from_yaw(yaw):
     msg.z = qu[2]
     msg.w = qu[3]
     return msg
+
+'''
+Sm is inv cov matrixes
+'''
+def multi_mahalanobis(x, y, Sm):
+    
+    print(x.shape, y.shape)
+    
+    xx = np.tile(x, (y.shape[0],1))
+    yy = np.repeat(y, x.shape[0], axis = 0)
+            
+    
+    SSm = np.repeat(Sm, x.shape[0], axis = 0)
+    
+    print(xx.shape, yy.shape)
+    
+    d = xx - yy
+        
+    de = np.expand_dims(d, 1)
+    dee = np.expand_dims(d, 2)
+    
+    #print(de.shape, SSm.shape)
+    
+    D = np.matmul(de, SSm)
+    #print(D.shape)
+    #D = D.squeeze(1)
+    
+    
+    D = np.sqrt( np.matmul( D, dee))
+    
+    D = D.reshape((x.shape[0], y.shape[0]))
+    
+    return D
+    
+    
+    

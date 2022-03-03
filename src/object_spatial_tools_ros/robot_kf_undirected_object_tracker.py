@@ -2,7 +2,7 @@
 
 import rospy
 from extended_object_detection.msg import SimpleObjectArray, ComplexObjectArray
-from object_spatial_tools_ros.utils import obj_transform_to_pose, get_common_transform, get_cov_ellipse_params, quaternion_msg_from_yaw
+from object_spatial_tools_ros.utils import obj_transform_to_pose, get_common_transform, get_cov_ellipse_params, quaternion_msg_from_yaw, multi_mahalanobis
 import tf2_geometry_msgs
 import tf2_ros
 import numpy as np
@@ -46,9 +46,9 @@ class SingleKFUndirectedObjectTracker(object):
                            [0, 0, self.k_decay, 0],
                            [0, 0, 0, self.k_decay]])
         
-        self.x = np.dot(F, self.x)
+        self.x = np.matmul(F, self.x)
         
-        self.P = np.dot( np.dot(F, self.P), F.T) + self.Q
+        self.P = np.matmul( np.matmul(F, self.P), F.T) + self.Q
         
             
     '''
@@ -58,15 +58,15 @@ class SingleKFUndirectedObjectTracker(object):
     def update(self, z, t):
         self.last_upd_t = t
                 
-        y = z - np.dot(self.H, self.x)
+        y = z - np.matmul(self.H, self.x)
         
-        S = np.dot( np.dot(self.H, self.P), self.H.T) + self.R
+        S = np.matmul( np.matmul(self.H, self.P), self.H.T) + self.R
         
-        K = np.dot( np.dot(self.P, self.H.T), np.linalg.inv(S))
+        K = np.matmul( np.matmul(self.P, self.H.T), np.linalg.inv(S))
         
-        self.x = self.x + np.dot(K, y)
+        self.x = self.x + np.matmul(K, y)
         
-        self.P = np.dot((self.I - np.dot(K, self.H)), self.P)
+        self.P = np.matmul((self.I - np.matmul(K, self.H)), self.P)
 
 class RobotKFUndirectedObjectTracker(object):
     
@@ -88,6 +88,7 @@ class RobotKFUndirectedObjectTracker(object):
         self.Qdiag = rospy.get_param('~Qdiag', [0.1, 0.1, 0.1, 0.1])
         self.Rdiag = rospy.get_param('~Rdiag', [0.1, 0.1])
         self.k_decay = rospy.get_param('~k_decay', 1)
+        self.mahalanobis_max = rospy.get_param('~mahalanobis_max', 1)
         
         update_rate_hz = rospy.get_param('~update_rate_hz', 5)
         
@@ -190,7 +191,7 @@ class RobotKFUndirectedObjectTracker(object):
                 else:
                     detected_objects[obj.type_name] = [ps_np]
                 
-                break # TEMP
+                #break # TEMP
                 
         for obj_name, poses in detected_objects.items():
             
@@ -198,7 +199,35 @@ class RobotKFUndirectedObjectTracker(object):
                 for pose in poses:                
                     self.objects_to_KFs[obj.type_name].append(SingleKFUndirectedObjectTracker(pose, now, self.Qdiag, self.Rdiag, self.k_decay))
             else:
-                self.objects_to_KFs[obj.type_name][0].update(poses[0], now)
+                
+                m_poses_np = np.array(poses) # [[x, y]]
+                
+                kf_poses_np = np.array([[kf.x[0], kf.x[1]] for kf in self.objects_to_KFs[obj_name]])
+                
+                S_np = np.array([np.linalg.inv(kf.P[:2,:2]) for kf in self.objects_to_KFs[obj_name]]) # already inv!
+                
+                D = multi_mahalanobis(m_poses_np, kf_poses_np, S_np)
+                
+                print('D', D, D.shape)
+                
+                #stop_cond = False
+                while not rospy.is_shutdown():# and not stop_cond:
+                    
+                    closest = np.unravel_index(np.argmin(D, axis=None), D.shape)
+                    print(closest)
+                                    
+                    if D[closest] > self.mahalanobis_max:
+                        break
+                    
+                    self.objects_to_KFs[obj.type_name][closest[1]].update(poses[closest[0]], now)
+                    
+                    D[closest[0],:] = np.inf
+                    D[:,closest[1]] = np.inf
+                                        
+                
+                for i in range(D.shape[0]):
+                    if (D[i,:] != np.inf).all():
+                        self.objects_to_KFs[obj.type_name].append(SingleKFUndirectedObjectTracker(poses[i], now, self.Qdiag, self.Rdiag, self.k_decay))
                         
         
     def run(self):
