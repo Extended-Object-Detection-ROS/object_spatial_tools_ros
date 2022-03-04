@@ -225,6 +225,9 @@ class RobotKFUndirectedObjectTracker(object):
         self.mutex.acquire()
         now = rospy.Time.now().to_sec()
         transform = get_common_transform(self.tf_buffer, msg.header, self.target_frame)
+        if transform is None:
+            self.mutex.release()
+            return
         
         # collect objects of interests
         detected_objects = {}
@@ -257,13 +260,13 @@ class RobotKFUndirectedObjectTracker(object):
                 
                 D = multi_mahalanobis(m_poses_np, kf_poses_np, S_np)
                 
-                print('D', D, D.shape)
+                #print('D', D, D.shape)
                 
                 extra_poses = list(range(len(poses)))
                 while not rospy.is_shutdown():
                     
                     closest = np.unravel_index(np.argmin(D, axis=None), D.shape)
-                    print(closest, D[closest])
+                    #print(closest, D[closest])
                                     
                     if D[closest] > self.mahalanobis_max:
                         break

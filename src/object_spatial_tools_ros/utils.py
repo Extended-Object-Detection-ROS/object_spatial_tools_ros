@@ -16,13 +16,17 @@ def obj_transform_to_pose(transform, header):
     
     
 def get_common_transform(tf_buffer, msg_header, target_frame):
-    transform = tf_buffer.lookup_transform(target_frame,
+    try:
+        transform = tf_buffer.lookup_transform(target_frame,
                                     # source frame:
                                     msg_header.frame_id,
                                     # get the tf at the time the pose was valid
                                     msg_header.stamp,
                                     # wait for at most 1 second for transform, otherwise throw
                                     rospy.Duration(1.0))        
+    except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+        rospy.logwarn(f"Can't find transform {target_frame} --> {msg_header.frame_id}")
+        return None
     return transform
 
 
@@ -62,7 +66,7 @@ Sm is inv cov matrixes
 '''
 def multi_mahalanobis(x, y, Sm):
     
-    print(x.shape, y.shape)
+    #print(x.shape, y.shape)
     
     xx = np.tile(x, (y.shape[0],1))
     yy = np.repeat(y, x.shape[0], axis = 0)
@@ -70,7 +74,7 @@ def multi_mahalanobis(x, y, Sm):
     
     SSm = np.repeat(Sm, x.shape[0], axis = 0)
     
-    print(xx.shape, yy.shape)
+    #print(xx.shape, yy.shape)
     
     d = xx - yy
         
