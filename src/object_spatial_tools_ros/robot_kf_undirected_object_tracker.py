@@ -5,8 +5,11 @@ from extended_object_detection.msg import SimpleObjectArray, ComplexObjectArray
 from object_spatial_tools_ros.utils import obj_transform_to_pose, get_common_transform, get_cov_ellipse_params, quaternion_msg_from_yaw, multi_mahalanobis
 import tf2_geometry_msgs
 import tf2_ros
+import tf
 import numpy as np
 from visualization_msgs.msg import Marker, MarkerArray
+from threading import Lock
+from geometry_msgs.msg import TransformStamped
 
 class SingleKFUndirectedObjectTracker(object):
     
@@ -75,20 +78,29 @@ class RobotKFUndirectedObjectTracker(object):
         rospy.init_node('robot_kf_undirected_object_tracker')
         
         self.target_frame = rospy.get_param('~target_frame', 'odom')
+        self.tf_pub_prefix = rospy.get_param('~tf_pub_prefix', '')
+        if self.tf_pub_prefix != '':
+            self.tf_pub_prefix = self.tf_pub_prefix + '/'
         
         tracked_objects_type_names = rospy.get_param('~tracked_objects_type_names', [])
         
         self.objects_to_KFs = {}
+        self.KFs_prev_elements = {}
         for type_obj in tracked_objects_type_names:
             self.objects_to_KFs[type_obj] = []            
+            self.KFs_prev_elements[type_obj] = 0
         
         self.tf_buffer = tf2_ros.Buffer(rospy.Duration(100.0))  # tf buffer length
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster()
         
         self.Qdiag = rospy.get_param('~Qdiag', [0.1, 0.1, 0.1, 0.1])
         self.Rdiag = rospy.get_param('~Rdiag', [0.1, 0.1])
         self.k_decay = rospy.get_param('~k_decay', 1)
+        self.lifetime = rospy.get_param('~lifetime', 0)
         self.mahalanobis_max = rospy.get_param('~mahalanobis_max', 1)
+        
+        self.mutex = Lock()
         
         update_rate_hz = rospy.get_param('~update_rate_hz', 5)
         
@@ -100,19 +112,49 @@ class RobotKFUndirectedObjectTracker(object):
         rospy.Timer(rospy.Duration(1/update_rate_hz), self.process)
         
     def process(self, event):
+        self.mutex.acquire()
         now = rospy.Time.now().to_sec()
         for name, kfs in self.objects_to_KFs.items():
+            self.KFs_prev_elements[name] = len(kfs)
+            remove_index = []
             for i, kf in enumerate(kfs):
-                kf.predict(now)
+                if self.lifetime == 0 or (now - kf.last_upd_t) < self.lifetime:
+                    kf.predict(now)
+                else:
+                    remove_index.append(i)
         
-                rospy.logwarn(f"{name} {i} {kf.x} {kf.P}")
+                #rospy.logwarn(f"{name} {i} {kf.x} {kf.P}")
+            for index in sorted(remove_index, reverse=True):
+                del kfs[index]
                 
         self.to_marker_array()
+        self.to_tf()
+        self.mutex.release()
+        
+    def to_tf(self):
+        for name, kfs in self.objects_to_KFs.items():
+            for i, kf in enumerate(kfs):
+                
+                t = TransformStamped()
+                
+                t.header.stamp = rospy.Time.now()
+                t.header.frame_id = self.target_frame
+                t.child_frame_id = self.tf_pub_prefix+name+f'_{i}'
+                
+                t.transform.translation.x = kf.x[0]
+                t.transform.translation.y = kf.x[1]
+                
+                t.transform.rotation.w = 1
+                
+                self.tf_broadcaster.sendTransform(t)                
+                
+                
                 
     def to_marker_array(self):
         now = rospy.Time.now()
         marker_array = MarkerArray()
         for name, kfs in self.objects_to_KFs.items():
+            i = 0
             for i, kf in enumerate(kfs):
                 # POSE AND SPEED
                 marker = Marker()
@@ -167,11 +209,20 @@ class RobotKFUndirectedObjectTracker(object):
                 marker.pose.orientation = quaternion_msg_from_yaw(th)
                 
                 marker_array.markers.append(marker)
+            for j in range(i+1, self.KFs_prev_elements[name]):
+                for t in ["_el","_pose"]:
+                    marker = Marker()                
+                    marker.header.stamp = now
+                    marker.ns = name+t
+                    marker.id = j
+                    marker.action = Marker.DELETE
+                    marker_array.markers.append(marker)
                 
         self.vis_pub.publish(marker_array)
         
         
     def cobject_cb(self, msg):
+        self.mutex.acquire()
         now = rospy.Time.now().to_sec()
         transform = get_common_transform(self.tf_buffer, msg.header, self.target_frame)
         
@@ -189,9 +240,7 @@ class RobotKFUndirectedObjectTracker(object):
                 if obj.type_name in detected_objects:
                     detected_objects[obj.type_name].append(ps_np)
                 else:
-                    detected_objects[obj.type_name] = [ps_np]
-                
-                #break # TEMP
+                    detected_objects[obj.type_name] = [ps_np]                                
                 
         for obj_name, poses in detected_objects.items():
             
@@ -210,11 +259,11 @@ class RobotKFUndirectedObjectTracker(object):
                 
                 print('D', D, D.shape)
                 
-                #stop_cond = False
-                while not rospy.is_shutdown():# and not stop_cond:
+                extra_poses = list(range(len(poses)))
+                while not rospy.is_shutdown():
                     
                     closest = np.unravel_index(np.argmin(D, axis=None), D.shape)
-                    print(closest)
+                    print(closest, D[closest])
                                     
                     if D[closest] > self.mahalanobis_max:
                         break
@@ -223,11 +272,12 @@ class RobotKFUndirectedObjectTracker(object):
                     
                     D[closest[0],:] = np.inf
                     D[:,closest[1]] = np.inf
-                                        
-                
-                for i in range(D.shape[0]):
-                    if (D[i,:] != np.inf).all():
-                        self.objects_to_KFs[obj.type_name].append(SingleKFUndirectedObjectTracker(poses[i], now, self.Qdiag, self.Rdiag, self.k_decay))
+                    extra_poses.remove(closest[0])
+                                                        
+                #for i in range(D.shape[0]):
+                for i in extra_poses:                
+                    self.objects_to_KFs[obj.type_name].append(SingleKFUndirectedObjectTracker(poses[i], now, self.Qdiag, self.Rdiag, self.k_decay))
+        self.mutex.release()
                         
         
     def run(self):
