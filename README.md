@@ -55,6 +55,12 @@ graph LR
     E --> |NO|C
     E --> |YES|F[update KF with object]
 ```
+Simplified algorithm to handle existing filters:  
+```mermaid
+graph LR
+    A{lifetime > now - last_update} --> |YES|B[remove KF]
+    A --> |NO|C[predict KF]
+```
 ### Params
  - __~target_frame__ (string, default: odom) frame for tracking
  - __~tf_pub_prefix__ (string, default: "") is set, prefix will be added to broadcasted tf frames
