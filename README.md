@@ -5,7 +5,7 @@ Nodes to work with results of [Extended Object Detection node](https://github.co
 
 ## 1. robot_short_object_memory_node.py
 Remembers objects in moving frame for short period of time.  
-Simplified algorithm to add new object.
+Simplified algorithm to add new object:  
 ```mermaid
 graph LR
     A[get new detected object] --> B{type exists?}
@@ -17,7 +17,7 @@ graph LR
     E --> |YES|I[append to best match]
     I --> J
 ```
-Simplified algorithm to update objects
+Simplified algorithm to update objects:  
 ```mermaid
 graph LR
     A{forgotten == true} -->|YES| B{occurance--}
@@ -44,8 +44,17 @@ graph LR
 - TODO: results itself!
 
 ## 2. robot_kf_undirected_object_tracker_node.py
-Tracks visually detected objects in 3d space. Works with unoriented objects. Kalman Filter estimates x,y, vx, vy parameters.
-
+Tracks visually detected objects in 3d space. Works with unoriented objects. Kalman Filter estimates x,y, vx, vy parameters.  
+Simplified algorithm to add new object:  
+```mermaid
+graph LR
+    A[get new object] --> B{type exists?}
+    B -->|NO|C[start new KF]
+    B --> |YES|D[calc mahalanobis]
+    D --> E{min maxalanobis < thresh}
+    E --> |NO|C
+    E --> |YES|F[update KF with object]
+```
 ### Params
  - __~target_frame__ (string, default: odom) frame for tracking
  - __~tf_pub_prefix__ (string, default: "") is set, prefix will be added to broadcasted tf frames
