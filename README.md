@@ -3,10 +3,25 @@ __THIS REPOSITORY IS ON EARLY STAGE OF DEVELOPMENT__
 #  object_spatial_tools_ros
 Nodes to work with results of [Extended Object Detection node](https://github.com/Extended-Object-Detection-ROS/extended_object_detection).
 
-## robot_short_object_memory_node.py
+## 1. robot_short_object_memory_node.py
 Remembers objects in moving frame for short period of time. 
 
-## robot_kf_undirected_object_tracker_node.py
+### Params
+ - __~target_frame__ (string, default: odom) frame for remembered objects
+ - __~score_multiplyer__ (double, default: 2) multiplier for score, to check similarity of objects
+ - __~update_rate_hz__ (double, default: 5 [hz]) rate of node
+ - __~forget_time__ (double, default: 10 [sec]) time to remove object if not seen
+ - __~update_count_thresh__ (double, default: 0) limit for previous position used for update, if 0 - no limit
+
+### Subscribed topics
+- __simple_objects__ (extended_object_detection/SimpleObjectArray) input result of detection
+- __complex_objects__ (extended_object_detection/ComplexObjectArray) input result of detection
+- 
+### Published topics
+- __~memory_map__ (visualization_msgs/MarkerArray) visualization of results
+- TODO: results itself!
+
+## 2. robot_kf_undirected_object_tracker_node.py
 Tracks visually detected objects in 3d space. Works with unoriented objects. Kalman Filter estimates x,y, vx, vy parameters.
 
 ### Params
