@@ -5,7 +5,17 @@ Nodes to work with results of [Extended Object Detection node](https://github.co
 
 ## 1. robot_short_object_memory_node.py
 Remembers objects in moving frame for short period of time. 
+Simplified algorithm to add new object
 ```mermaid
+graph LR
+    A[get new detected object] --> B{type exists?}
+    B --> |NO|C[add to memory as new]
+    C --> J[occurance++, forgotten = false]
+    B --> |YES|D[calc scores, calc thresh]
+    D --> E{best match score < thresh}
+    E --> |NO|C
+    E --> |YES|I[append to best match]
+    I --> J
 ```
 ### Params
  - __~target_frame__ (string, default: odom) frame for remembered objects
