@@ -17,11 +17,7 @@ graph LR
     E --> |YES|I[append to best match]
     I --> J
 ```
-Formula for match score <img src="https://render.githubusercontent.com/render/math?math=\begin{bmatrix}
-dxy & dz & dr & dh
-\end{bmatrix} \cdot \begin{bmatrix}
-c1 & c2 & c3 & c4
-\end{bmatrix}^{T}">  
+Formula for match score <img src="https://render.githubusercontent.com/render/math?math=\begin{bmatrix} dxy & dz & dr & dh \end{bmatrix} \cdot \begin{bmatrix} c1 & c2 & c3 & c4 \end{bmatrix}^{T}">  
 Simplified algorithm to update objects
 ```mermaid
 graph LR
