@@ -11,13 +11,17 @@ graph LR
     A[get new detected object] --> B{type exists?}
     B --> |NO|C[add to memory as new]
     C --> J[occurance++, forgotten = false]
-    B --> |YES|D[calc scores, calc thresh]
+    B --> |YES|D[calc match scores, calc thresh]
     D --> E{best match score < thresh}
     E --> |NO|C
     E --> |YES|I[append to best match]
     I --> J
 ```
-<img src="https://render.githubusercontent.com/render/math?math=e^{i \pi} = -1">  
+Formula for match score <img src="https://render.githubusercontent.com/render/math?math=\begin{bmatrix}
+dxy & dz & dr & dh
+\end{bmatrix} \cdot \begin{bmatrix}
+c1 & c2 & c3 & c4
+\end{bmatrix}^{T}">  
 Simplified algorithm to update objects
 ```mermaid
 graph LR
