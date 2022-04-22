@@ -4,8 +4,8 @@ __THIS REPOSITORY IS ON EARLY STAGE OF DEVELOPMENT__
 Nodes to work with results of [Extended Object Detection node](https://github.com/Extended-Object-Detection-ROS/extended_object_detection).
 
 ## 1. robot_short_object_memory_node.py
-Remembers objects in moving frame for short period of time. 
-Simplified algorithm to add new object
+Remembers objects in moving frame for short period of time.  
+Simplified algorithm to add new object.
 ```mermaid
 graph LR
     A[get new detected object] --> B{type exists?}
@@ -17,6 +17,7 @@ graph LR
     E --> |YES|I[append to best match]
     I --> J
 ```
+<img src="https://render.githubusercontent.com/render/math?math=e^{i \pi} = -1">  
 Simplified algorithm to update objects
 ```mermaid
 graph LR
