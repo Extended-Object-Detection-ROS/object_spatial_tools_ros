@@ -5,7 +5,15 @@ Nodes to work with results of [Extended Object Detection node](https://github.co
 
 ## 1. robot_short_object_memory_node.py
 Remembers objects in moving frame for short period of time. 
-
+```mermaid
+graph TD
+    A[Christmas] -->|Get money| B(Go shopping)
+    B --> C{Let me think}
+    C -->|One| D[Laptop]
+    C -->|Two| E[iPhone]
+    C -->|Three| F[fa:fa-car Car]
+  
+```
 ### Params
  - __~target_frame__ (string, default: odom) frame for remembered objects
  - __~score_multiplyer__ (double, default: 2) multiplier for score, to check similarity of objects
