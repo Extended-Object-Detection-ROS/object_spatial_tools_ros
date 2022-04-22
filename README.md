@@ -17,10 +17,21 @@ graph LR
     E --> |YES|I[append to best match]
     I --> J
 ```
+Simplified algorithm to update objects
+```mermaid
+graph LR
+    A{forgotten == true} -->|YES| B{occurance--}
+    B --> C[occurance == 0]
+    C --> |YES|D[delete obj]
+    C --> |NO|E[do nothing]
+    A --> |NO|F{now - obj_stamp < forget_time}
+    F -->|NO|E
+    F -->|YES|I[forgotten = true]
+```
 ### Params
  - __~target_frame__ (string, default: odom) frame for remembered objects
  - __~score_multiplyer__ (double, default: 2) multiplier for score, to check similarity of objects
- - __~update_rate_hz__ (double, default: 5 [hz]) rate of node
+ - __~update_rate_hz__ (double, default: 5 [hz]) rate of update algorithm (see below)
  - __~forget_time__ (double, default: 10 [sec]) time to remove object if not seen
  - __~update_count_thresh__ (double, default: 0) limit for previous position used for update, if 0 - no limit
 
