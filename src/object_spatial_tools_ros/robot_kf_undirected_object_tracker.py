@@ -266,7 +266,8 @@ class RobotKFUndirectedObjectTracker(object):
             
             if len(self.objects_to_KFs[obj_name]) == 0:
                 for pose in poses:                
-                    self.objects_to_KFs[obj.type_name].append(SingleKFUndirectedObjectTracker(pose, now, self.Qdiag, self.Rdiag, self.k_decay))
+                    #self.objects_to_KFs[obj.type_name].append(SingleKFUndirectedObjectTracker(pose, now, self.Qdiag, self.Rdiag, self.k_decay))
+                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(pose, now, self.Qdiag, self.Rdiag, self.k_decay))
             else:
                 
                 m_poses_np = np.array(poses) # [[x, y]]
@@ -288,7 +289,8 @@ class RobotKFUndirectedObjectTracker(object):
                     if D[closest] > self.mahalanobis_max:
                         break
                     
-                    self.objects_to_KFs[obj.type_name][closest[1]].update(poses[closest[0]], now)
+                    #self.objects_to_KFs[obj.type_name][closest[1]].update(poses[closest[0]], now)
+                    self.objects_to_KFs[obj_name][closest[1]].update(poses[closest[0]], now)
                     
                     D[closest[0],:] = np.inf
                     D[:,closest[1]] = np.inf
@@ -296,7 +298,8 @@ class RobotKFUndirectedObjectTracker(object):
                                                         
                 #for i in range(D.shape[0]):
                 for i in extra_poses:                
-                    self.objects_to_KFs[obj.type_name].append(SingleKFUndirectedObjectTracker(poses[i], now, self.Qdiag, self.Rdiag, self.k_decay))        
+                    #self.objects_to_KFs[obj.type_name].append(SingleKFUndirectedObjectTracker(poses[i], now, self.Qdiag, self.Rdiag, self.k_decay))
+                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(poses[i], now, self.Qdiag, self.Rdiag, self.k_decay))        
         
         
                         
