@@ -78,4 +78,4 @@ graph LR
 
 ### Published topics
 - __~vis__ (visualization_msgs/MarkerArray) visualization of results
-- TODO: results itself!
+- __~tracked_objects__ ([object_spatial_tools_ros/TrackedObjectArray](https://github.com/Extended-Object-Detection-ROS/object_spatial_tools_ros/blob/devel-noetic/msg/TrackedObjectArray.msg)) out results
