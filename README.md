@@ -1,7 +1,14 @@
 __THIS REPOSITORY IS ON EARLY STAGE OF DEVELOPMENT__
 
 #  object_spatial_tools_ros
-Nodes to work with results of [Extended Object Detection node](https://github.com/Extended-Object-Detection-ROS/extended_object_detection).
+Nodes to work with results of [Extended Object Detection node](https://github.com/Extended-Object-Detection-ROS/extended_object_detection).  
+All objects should be detected with distance estimation to it.
+
+ - [V] __Short Object Memory__ - remembers position of detected objects for some period of time
+ - [ ] __Semantic Map Creator__ - marks detected objects on map, estimatin their sizes
+ - [V] __Kalman Filter Tracker for Unoriented Objects__ - tracks detected objects without orientation, estimating their speed
+ - [ ] __Exteneded Kalman Filter for Oriented Objects__ - tracks detected objects with orientation, estimating their speed
+
 
 ## 1. robot_short_object_memory_node.py
 Remembers objects in moving frame for short period of time.  
