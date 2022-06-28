@@ -9,7 +9,7 @@ import tf
 import numpy as np
 from visualization_msgs.msg import Marker, MarkerArray
 from threading import Lock
-from geometry_msgs.msg import TransformStamped
+from geometry_msgs.msg import TransformStamped, Point
 from object_spatial_tools_ros.msg import TrackedObject, TrackedObjectArray
 
 class SingleKFUndirectedObjectTracker(object):
@@ -38,6 +38,8 @@ class SingleKFUndirectedObjectTracker(object):
         
         self.I = np.eye(4)                            
         
+        self.track = []
+        
     '''
     t - time stamp for predict, seconds
     '''
@@ -53,6 +55,8 @@ class SingleKFUndirectedObjectTracker(object):
         self.x = np.matmul(F, self.x)
         
         self.P = np.matmul( np.matmul(F, self.P), F.T) + self.Q
+        
+        self.track.append(self.x.copy())
         
             
     '''
@@ -71,6 +75,8 @@ class SingleKFUndirectedObjectTracker(object):
         self.x = self.x + np.matmul(K, y)
         
         self.P = np.matmul((self.I - np.matmul(K, self.H)), self.P)
+        
+        self.track.append(self.x.copy())
 
 class RobotKFUndirectedObjectTracker(object):
     
@@ -244,8 +250,35 @@ class RobotKFUndirectedObjectTracker(object):
                 marker.pose.orientation = quaternion_msg_from_yaw(th)
                 
                 marker_array.markers.append(marker)
+                
+                # TRACK
+                marker = Marker()
+                
+                marker.header.stamp = now
+                marker.header.frame_id = self.target_frame
+                
+                marker.ns = name+"_track"
+                marker.id = i
+                
+                marker.type = Marker.LINE_STRIP
+                marker.action = Marker.ADD
+                
+                marker.scale.x = 0.03
+                marker.color.g = 1
+                marker.color.a = 1
+                marker.pose.orientation.w = 1
+                
+                for track_item in kf.track:
+                    p = Point()
+                    p.x = track_item[0]
+                    p.y = track_item[1]
+                    marker.points.append(p)
+                    
+                marker_array.markers.append(marker)
+                
+                
             for j in range(i+1, self.KFs_prev_elements[name]):
-                for t in ["_el","_pose"]:
+                for t in ["_el","_pose", "_track"]:
                     marker = Marker()                
                     marker.header.stamp = now
                     marker.ns = name+t
