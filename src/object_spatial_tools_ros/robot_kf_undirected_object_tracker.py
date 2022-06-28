@@ -10,6 +10,7 @@ import numpy as np
 from visualization_msgs.msg import Marker, MarkerArray
 from threading import Lock
 from geometry_msgs.msg import TransformStamped
+from object_spatial_tools_ros.msg import TrackedObject, TrackedObjectArray
 
 class SingleKFUndirectedObjectTracker(object):
     
@@ -105,6 +106,7 @@ class RobotKFUndirectedObjectTracker(object):
         update_rate_hz = rospy.get_param('~update_rate_hz', 5)
         
         self.vis_pub = rospy.Publisher('~vis', MarkerArray, queue_size = 1)
+        self.out_pub = rospy.Publisher('~tracked_objects', TrackedObjectArray, queue_size = 1)
         
         rospy.Subscriber('simple_objects', SimpleObjectArray, self.sobject_cb)
         rospy.Subscriber('complex_objects', ComplexObjectArray, self.cobject_cb)
@@ -129,15 +131,17 @@ class RobotKFUndirectedObjectTracker(object):
                 
         self.to_marker_array()
         self.to_tf()
+        self.to_tracked_object_array()
         self.mutex.release()
         
     def to_tf(self):
+        now = rospy.Time.now()
         for name, kfs in self.objects_to_KFs.items():
             for i, kf in enumerate(kfs):
                 
                 t = TransformStamped()
                 
-                t.header.stamp = rospy.Time.now()
+                t.header.stamp = now
                 t.header.frame_id = self.target_frame
                 t.child_frame_id = self.tf_pub_prefix+name+f'_{i}'
                 
@@ -147,7 +151,38 @@ class RobotKFUndirectedObjectTracker(object):
                 t.transform.rotation.w = 1
                 
                 self.tf_broadcaster.sendTransform(t)                
+        
+    
+    def to_tracked_object_array(self):        
+        msg_array = TrackedObjectArray()
+        msg_array.header.stamp = rospy.Time.now()
+        msg_array.header.frame_id = self.target_frame
+        for name, kfs in self.objects_to_KFs.items():
+            for i, kf in enumerate(kfs):
+                msg = TrackedObject()
+                msg.child_frame_id = self.tf_pub_prefix+name+f'_{i}'
                 
+                msg.pose.pose.position.x = kf.x[0]
+                msg.pose.pose.position.y = kf.x[1]
+                
+                msg.pose.pose.orientation.w = 1
+                
+                msg.pose.covariance[0] = kf.P[0,0]#xx
+                msg.pose.covariance[1] = kf.P[0,1]#xy
+                msg.pose.covariance[6] = kf.P[1,0]#yx
+                msg.pose.covariance[7] = kf.P[1,1]#yy
+                
+                msg.twist.twist.linear.x = kf.x[2]
+                msg.twist.twist.linear.y = kf.x[3]
+                
+                msg.twist.covariance[0] = kf.P[2,2]#xx
+                msg.twist.covariance[1] = kf.P[2,3]#xy
+                msg.twist.covariance[2] = kf.P[3,2]#yx
+                msg.twist.covariance[3] = kf.P[3,3]#yy
+                
+                msg_array.objects.append(msg)
+                
+        self.out_pub.publish(msg_array)
                 
                 
     def to_marker_array(self):
@@ -219,6 +254,7 @@ class RobotKFUndirectedObjectTracker(object):
                     marker_array.markers.append(marker)
                 
         self.vis_pub.publish(marker_array)
+            
     
     def sobject_cb(self, msg):
         self.mutex.acquire()
