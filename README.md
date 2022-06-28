@@ -44,7 +44,7 @@ graph LR
 - TODO: results itself!
 
 ## 2. robot_kf_undirected_object_tracker_node.py
-Tracks visually detected objects in 3d space. Works with unoriented objects. Kalman Filter estimates x,y, vx, vy parameters.  
+Tracks visually detected objects in 2d space. Works with unoriented objects. Kalman Filter estimates `x,y, vx, vy` parameters.  
 Simplified algorithm to add new object:  
 ```mermaid
 graph LR
