@@ -106,6 +106,10 @@ class RobotKFUndirectedObjectTracker(object):
         self.k_decay = rospy.get_param('~k_decay', 1)
         self.lifetime = rospy.get_param('~lifetime', 0)
         self.mahalanobis_max = rospy.get_param('~mahalanobis_max', 1)
+                
+        self.min_score = rospy.get_param('~min_score', 0)
+        self.min_score_soft = rospy.get_param('~min_score_soft', self.min_score)
+        
         
         self.mutex = Lock()
         
@@ -317,14 +321,21 @@ class RobotKFUndirectedObjectTracker(object):
         for obj in objects:            
             if obj.type_name in self.objects_to_KFs:                                
                 
+                soft_tracking = False
+                
                 if obj.transform.translation.z == 1:
                     continue
+                
+                if obj.score < self.min_score:
+                    if obj.score < self.min_score_soft:
+                        continue    
+                    soft_tracking = True
                 
                 ps = obj_transform_to_pose(obj.transform, header)
                 
                 ps_transformed = tf2_geometry_msgs.do_transform_pose(ps, transform).pose
                 
-                ps_np = np.array([ps_transformed.position.x, ps_transformed.position.y])
+                ps_np = np.array([ps_transformed.position.x, ps_transformed.position.y, float(soft_tracking)])
                 
                 if obj.type_name in detected_objects:
                     detected_objects[obj.type_name].append(ps_np)
@@ -335,11 +346,12 @@ class RobotKFUndirectedObjectTracker(object):
             
             if len(self.objects_to_KFs[obj_name]) == 0:
                 for pose in poses:                
-                    #self.objects_to_KFs[obj.type_name].append(SingleKFUndirectedObjectTracker(pose, now, self.Qdiag, self.Rdiag, self.k_decay))
-                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(pose, now, self.Qdiag, self.Rdiag, self.k_decay))
+                    if pose[2] == 1:
+                        continue # skip soft_tracking
+                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(pose[:2], now, self.Qdiag, self.Rdiag, self.k_decay))
             else:
                 
-                m_poses_np = np.array(poses) # [[x, y]]
+                m_poses_np = np.array(poses)[:,:2] # [[x, y]]
                 
                 kf_poses_np = np.array([[kf.x[0], kf.x[1]] for kf in self.objects_to_KFs[obj_name]])
                 
@@ -357,17 +369,17 @@ class RobotKFUndirectedObjectTracker(object):
                                     
                     if D[closest] > self.mahalanobis_max:
                         break
-                    
-                    #self.objects_to_KFs[obj.type_name][closest[1]].update(poses[closest[0]], now)
-                    self.objects_to_KFs[obj_name][closest[1]].update(poses[closest[0]], now)
+                                        
+                    self.objects_to_KFs[obj_name][closest[1]].update(poses[closest[0]][:2], now)
                     
                     D[closest[0],:] = np.inf
                     D[:,closest[1]] = np.inf
                     extra_poses.remove(closest[0])
                                                         
                 #for i in range(D.shape[0]):
-                for i in extra_poses:                
-                    #self.objects_to_KFs[obj.type_name].append(SingleKFUndirectedObjectTracker(poses[i], now, self.Qdiag, self.Rdiag, self.k_decay))
+                for i in extra_poses:      
+                    if poses[i][2] == 1: # soft_tracking
+                        continue
                     self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(poses[i], now, self.Qdiag, self.Rdiag, self.k_decay))        
         
         
