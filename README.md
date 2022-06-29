@@ -56,11 +56,23 @@ Simplified algorithm to add new object:
 ```mermaid
 graph LR
     A[get new object] --> B{type exists?}
-    B -->|NO|C[start new KF]
-    B --> |YES|D[calc mahalanobis]
-    D --> E{min maxalanobis < thresh}
-    E --> |NO|C
-    E --> |YES|F[update KF with object]
+    
+    Z[Reject object]
+    C[start new KF]    
+    D[calc mahalanobis]
+    E{min maxalanobis < thresh}
+    e{score > min_score}
+    f{score > min_score_soft}
+
+    B -->|NO|e
+    B --> |YES|D
+    D --> E
+    E --> |NO|e
+    e --> |YES|C
+    E --> |YES|f
+    f --> |YES|F[update KF with object]
+    f --> |NO|Z
+    e --> |NO|Z
 ```
 Simplified algorithm to handle existing filters:  
 ```mermaid
