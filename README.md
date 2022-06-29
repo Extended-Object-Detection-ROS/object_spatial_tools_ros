@@ -90,6 +90,8 @@ graph LR
  - __~lifetime__ (double, default: 0) how long to perform tracking when objects disappears, if 0 - infinite
  - __~mahalanobis_max__ (double, default: 1) Mahalanobis dist when new object might be added to existing track
  - __~update_rate_hz__ (double, default: 5 [hz]) rate of tracker
+ - __~min_score__ (double, default: 0.0) threshold for score of detected objects
+ - __~min_score_soft__ (double, default: __~min_score__) threshold for soft-mode traking, to disable set >= __~min_score__
  
 ### Subscribed topics
 - __simple_objects__ (extended_object_detection/SimpleObjectArray) input result of detection
