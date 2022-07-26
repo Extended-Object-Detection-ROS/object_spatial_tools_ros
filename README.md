@@ -45,7 +45,7 @@ graph LR
 ### Subscribed topics
 - __simple_objects__ (extended_object_detection/SimpleObjectArray) input result of detection
 - __complex_objects__ (extended_object_detection/ComplexObjectArray) input result of detection
-- 
+
 ### Published topics
 - __~memory_map__ (visualization_msgs/MarkerArray) visualization of results
 - TODO: results itself!
