@@ -102,7 +102,7 @@ graph TD
 - __detected_objects__ (extended_object_detection/SimpleObjectArray) Detected objects to be mapped. If _update_map_ is false, node doesn't subscribe to it.
 
 ### Published topics
-- __~semantic_map__ (object_mapping/SematicMap) Full map information for external usage.
+- __~semantic_map__ (object_spatial_tools_ros/SematicMap) Full map information for external usage.
 - __~semantic_object_map_as_markers__ (visualiation_msgs/MarkerArray) Map represented for rviz visualization, only published if _publish_map_as_markers_ param is set.
 
 ### Provided services
