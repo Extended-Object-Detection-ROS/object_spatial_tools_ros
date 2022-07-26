@@ -17,7 +17,7 @@ from sensor_msgs.msg import PointCloud2, PointField
 from sensor_msgs import point_cloud2
 from std_msgs.msg import Header
 from object_spatial_tools_ros.msg import SemanticMap, SemanticObject
-from object_spatial_tools_ros.utils import quaternion_msg_from_yaw
+from object_spatial_tools_ros.utils import quaternion_msg_from_yaw, get_cov_ellipse_params
 
 class SimpleMapObject(object):
     def __init__(self, type_id, type_name, data):
@@ -212,12 +212,12 @@ class SimpleClusterObjectMapper(object):
                     self.MAP = self.dictionary_to_map(yaml.load(infile, Loader=yaml.FullLoader))
         
         ## semantic format publisher
-        self.map_pub = rospy.Publisher('semantic_map', SemanticMap, queue_size = 1)                
+        self.map_pub = rospy.Publisher('~semantic_map', SemanticMap, queue_size = 1)                
         
         ## marker array format publisher
         self.publish_map = rospy.get_param('~publish_map_as_markers', True)        
         if self.publish_map:
-            self.map_pub_markers = rospy.Publisher('semantic_object_map_as_markers',MarkerArray,queue_size = 1)
+            self.map_pub_markers = rospy.Publisher('~semantic_object_map_as_markers',MarkerArray,queue_size = 1)
         
         ## point cloud format publisher
         self.publish_cloud = rospy.get_param('~publish_cloud', False)
@@ -457,25 +457,27 @@ class SimpleClusterObjectMapper(object):
                 #
                 # covariance
                 #
-                eig_val, eig_vec = np.linalg.eig(obj['cov'][0:2,0:2])
+                #eig_val, eig_vec = np.linalg.eig(obj['cov'][0:2,0:2])
                 
-                if eig_val[0] >= eig_val[1]:
-                    big_ind = 0
-                    small_ind = 1
-                else:
-                    big_ind = 1
-                    small_ind = 0
+                #if eig_val[0] >= eig_val[1]:
+                    #big_ind = 0
+                    #small_ind = 1
+                #else:
+                    #big_ind = 1
+                    #small_ind = 0
                     
-                try:
-                    a = np.sqrt(eig_val[big_ind])
-                except ValueError:
-                    a = 0
-                try:
-                    b = np.sqrt(eig_val[small_ind])
-                except ValueError:
-                    b = 0
+                #try:
+                    #a = np.sqrt(eig_val[big_ind])
+                #except ValueError:
+                    #a = 0
+                #try:
+                    #b = np.sqrt(eig_val[small_ind])
+                #except ValueError:
+                    #b = 0
                     
-                angle = np.arctan2(eig_vec[big_ind, 1], eig_vec[big_ind, 0])
+                #angle = np.arctan2(eig_vec[big_ind, 1], eig_vec[big_ind, 0])
+                
+                a, b , angle = get_cov_ellipse_params(obj['cov'][0:2,0:2])
         
                 marker_msg = Marker()
                 

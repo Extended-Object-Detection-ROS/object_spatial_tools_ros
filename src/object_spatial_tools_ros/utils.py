@@ -47,7 +47,7 @@ def get_cov_ellipse_params(cov_matrix):
         else:
             theta = np.pi /2
     else:
-        theta = np.acrtan2(l1 -a, b)
+        theta = np.arctan2(l1 -a, b)
         
     return np.sqrt(l1), np.sqrt(l2), theta
    
