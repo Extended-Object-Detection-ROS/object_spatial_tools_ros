@@ -69,9 +69,13 @@ Creates an 'semantic map layer' which contains position, names and sizes of obje
 ### Subscibed topics
 - __detected_objects__ (extended_object_detection/SimpleObjectArray) Detected objects to be mapped. If _update_map_ is false, node doesn't subscribe to it.
 
-### Published Topics
+### Published topics
 - __~semantic_map__ (object_mapping/SematicMap) Full map information for external usage.
 - __~semantic_object_map_as_markers__ (visualiation_msgs/MarkerArray) Map represented for rviz visualization, only published if _publish_map_as_markers_ param is set.
+
+### Provided services
+- __~save_semantic_map__ (std_srvs/Empty) Updates map on it's path, or saves new one if not exist.
+- __~clear_map__ (std_srvs/Empty) Fully clears existed map.
 
 ## 3. robot_kf_undirected_object_tracker_node.py
 Tracks visually detected objects in 2d space. Works with unoriented objects. Kalman Filter estimates `x,y, vx, vy` parameters.  
