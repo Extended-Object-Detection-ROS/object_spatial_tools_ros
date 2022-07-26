@@ -272,7 +272,7 @@ class SimpleClusterObjectMapper(object):
             v3 = detected_object.rect.cornerTranslates[2]            
             distance = detected_object.transform.translation.z       
             if distance == 1:
-                continue
+                continue # ignore distance
             width = np.sqrt((v1.x - v2.x)**2 + (v1.y - v2.y)**2 + (v1.z - v2.z)**2)# * distance
             height = np.sqrt((v3.x - v2.x)**2 + (v3.y - v2.y)**2 + (v3.z - v2.z)**2)# * distance
             
