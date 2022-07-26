@@ -50,7 +50,9 @@ graph LR
 - __~memory_map__ (visualization_msgs/MarkerArray) visualization of results
 - TODO: results itself!
 
-## 2. robot_kf_undirected_object_tracker_node.py
+## 2. robot_semantic_map_processor_node.py
+
+## 3. robot_kf_undirected_object_tracker_node.py
 Tracks visually detected objects in 2d space. Works with unoriented objects. Kalman Filter estimates `x,y, vx, vy` parameters.  
 Simplified algorithm to add new object:  
 ```mermaid
