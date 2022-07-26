@@ -14,26 +14,27 @@ All objects should be detected with distance estimation to it.
 Remembers objects in moving frame for short period of time.  
 Simplified algorithm to add new object:  
 ```mermaid
+classDef box fill:#FFFFFF, stroke:#000, stroke-width:2px;
 graph LR
-    A[get new detected object] --> B{type exists?}
-    B --> |NO|C[add to memory as new]
-    C --> J[occurance++, forgotten = false]
-    B --> |YES|D[calc match scores, calc thresh]
-    D --> E{best match score < thresh}
-    E --> |NO|C
-    E --> |YES|I[append to best match]
-    I --> J
+    A[get new detected object]:::box --> B{type exists?}
+    B --> |NO|C[add to memory as new]:::box
+    C --> J[occurance++, forgotten = false]:::box
+    B --> |YES|D[calc match scores, calc thresh]:::box
+    D --> E{best match score < thresh}:::box
+    E --> |NO|C:::box
+    E --> |YES|I[append to best match]:::box
+    I --> J:::box
 ```
 Simplified algorithm to update objects:  
 ```mermaid
 graph LR
-    A{forgotten == true} -->|YES| B{occurance--}
-    B --> C[occurance == 0]
-    C --> |YES|D[delete obj]
-    C --> |NO|E[do nothing]
-    A --> |NO|F{now - obj_stamp < forget_time}
-    F -->|NO|E
-    F -->|YES|I[forgotten = true]
+    A{forgotten == true}:::box -->|YES| B{occurance--}
+    B --> C[occurance == 0]:::box
+    C --> |YES|D[delete obj]:::box
+    C --> |NO|E[do nothing]:::box
+    A --> |NO|F{now - obj_stamp < forget_time}:::box
+    F -->|NO|E:::box
+    F -->|YES|I[forgotten = true]:::box
 ```
 ### Params
  - __~target_frame__ (string, default: odom) frame for remembered objects
@@ -52,6 +53,34 @@ graph LR
 
 ## 2. robot_semantic_map_processor_node.py
 Creates an 'semantic map layer' which contains position, names and sizes of objects.
+
+```mermaid
+graph TD
+  classDef box fill:#FFFFFF, stroke:#000, stroke-width:2px;
+
+  A[new objects recieved]:::box
+  A-->B{type exists}:::box
+
+  B --> b{Is min MH dist to saved cluster centroid less thresh?}:::box
+
+  b -->|NO| C[Append point to container unmerged data]:::box
+  b -->|YES| c[Add point to saved cluster]:::box
+  B -->|NO| D[Create new object container]:::box
+
+  c --> E
+  C --> E
+  D --> E
+  E[Free temp clusters, and recluster all unmerged data]:::box
+  E --> F{Cluster size > min_size}:::box
+  F -->|YES| G{Cluster size > max_size}:::box
+  F -->|NO| H[Ignore it]:::box
+
+  G -->|YES| J[Add cluster to saved clusters, remove its data from unmerged data]:::box
+  G -->|NO| K[Add clusters to temp clusters]:::box
+  J --> L:::box
+  K --> L:::box
+  L[Merge intersecting saved clusters]
+```
 
 ### Params
  - __~map_frame__ (string, default: "map") TF frame, used for mapping.
@@ -82,30 +111,30 @@ Tracks visually detected objects in 2d space. Works with unoriented objects. Kal
 Simplified algorithm to add new object:  
 ```mermaid
 graph LR
-    A[get new object] --> B{type exists?}
+    A[get new object]:::box --> B{type exists?}:::box
     
-    Z[Reject object]
-    C[start new KF]    
-    D[calc mahalanobis]
-    E{min maxalanobis < thresh}
-    e{score > min_score}
-    f{score > min_score_soft}
+    Z[Reject object]:::box
+    C[start new KF]:::box   
+    D[calc mahalanobis]:::box
+    E{min maxalanobis < thresh}:::box
+    e{score > min_score}:::box
+    f{score > min_score_soft}:::box
 
-    B -->|NO|e
-    B --> |YES|D
-    D --> E
-    E --> |NO|e
-    e --> |YES|C
-    E --> |YES|f
-    f --> |YES|F[update KF with object]
-    f --> |NO|Z
-    e --> |NO|Z
+    B -->|NO|e:::box
+    B --> |YES|D:::box
+    D --> E:::box
+    E --> |NO|e:::box
+    e --> |YES|C:::box
+    E --> |YES|f:::box
+    f --> |YES|F[update KF with object]:::box
+    f --> |NO|Z:::box
+    e --> |NO|Z:::box
 ```
 Simplified algorithm to handle existing filters:  
 ```mermaid
 graph LR
-    A{lifetime > now - last_update} --> |YES|B[remove KF]
-    A --> |NO|C[predict KF]
+    A{lifetime > now - last_update} --> |YES|B[remove KF]:::box
+    A --> |NO|C[predict KF]:::box
 ```
 ### Params
  - __~target_frame__ (string, default: odom) frame for tracking
