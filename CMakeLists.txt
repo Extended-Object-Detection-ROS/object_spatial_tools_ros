@@ -52,6 +52,8 @@ add_message_files(
   FILES
   TrackedObject.msg
   TrackedObjectArray.msg
+  SemanticObject.msg
+  SemanticMap.msg
 )
 
 ## Generate services in the 'srv' folder
