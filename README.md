@@ -17,7 +17,7 @@ Simplified algorithm to add new object:
 graph LR
     classDef box fill:#FFFFFF, stroke:#000, stroke-width:2px;
 
-    A[get new detected object]:::box --> B{type exists?}
+    A[get new detected object]:::box --> B{type exists?}:::box
     B --> |NO|C[add to memory as new]:::box
     C --> J[occurance++, forgotten = false]:::box
     B --> |YES|D[calc match scores, calc thresh]:::box
@@ -31,7 +31,7 @@ Simplified algorithm to update objects:
 graph LR
     classDef box fill:#FFFFFF, stroke:#000, stroke-width:2px;
     
-    A{forgotten == true}:::box -->|YES| B{occurance--}
+    A{forgotten == true}:::box -->|YES| B{occurance--}:::box
     B --> C[occurance == 0]:::box
     C --> |YES|D[delete obj]:::box
     C --> |NO|E[do nothing]:::box
@@ -140,7 +140,7 @@ Simplified algorithm to handle existing filters:
 graph LR
     classDef box fill:#FFFFFF, stroke:#000, stroke-width:2px;
     
-    A{lifetime > now - last_update} --> |YES|B[remove KF]:::box
+    A{lifetime > now - last_update}:::box --> |YES|B[remove KF]:::box
     A --> |NO|C[predict KF]:::box
 ```
 ### Params
