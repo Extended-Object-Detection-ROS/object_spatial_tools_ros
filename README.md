@@ -51,6 +51,27 @@ graph LR
 - TODO: results itself!
 
 ## 2. robot_semantic_map_processor_node.py
+Creates an 'semantic map layer' which contains position, names and sizes of objects.
+
+### Params
+ - __~map_frame__ (string, default: "map") TF frame, used for mapping.
+ - __~map_file__ (string, "/tmp/semantic_map.yaml") Path of map to be loaded.
+ - __~clear_map_on_start__ (bool, false) If true creates new map, and _save_semantic_map_ serice will overwrite saved map if exists.
+ - __~update_map__ (bool, default: False) If _clear_map_on_start_ is false. If true, loaded map will be updated if exist, else will be crated a new one. If false, that loaded map only will be republished to topics is exist, else programm will be terminated.
+ - __~pub_rate_sec__ (float, default: 1.0) If _update_map_ is false, it will be published with such rate.
+ - __~publish_map_as_markers__ (bool, default: True) If true marker representation of map is published.
+ - __~publish_cloud__ (bool, default: False) If true raw object position is published.
+ - __~mh_thres__ (float, default: 3.0) Mahalanobis threshold when new points is added to existing cluster.
+ - __~cluster_dist_thres__ (float, default: 3.0) Threshold (in meters?) of distancem which is used to form new cluster by hierarhical clustering.
+ - __~cluster_min_size__ (int, default: 10) If cluster size is less, it is ignored.
+ - __~cluster_max_size__ (int, default: 100) When cluster size overgrown that value, it is saved and only its params are updated.
+
+### Subscibed topics
+- __detected_objects__ (extended_object_detection/SimpleObjectArray) Detected objects to be mapped. If _update_map_ is false, node doesn't subscribe to it.
+
+### Published Topics
+- __~semantic_map__ (object_mapping/SematicMap) Full map information for external usage.
+- __~semantic_object_map_as_markers__ (visualiation_msgs/MarkerArray) Map represented for rviz visualization, only published if _publish_map_as_markers_ param is set.
 
 ## 3. robot_kf_undirected_object_tracker_node.py
 Tracks visually detected objects in 2d space. Works with unoriented objects. Kalman Filter estimates `x,y, vx, vy` parameters.  
