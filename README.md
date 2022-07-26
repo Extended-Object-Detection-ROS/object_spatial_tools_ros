@@ -14,8 +14,9 @@ All objects should be detected with distance estimation to it.
 Remembers objects in moving frame for short period of time.  
 Simplified algorithm to add new object:  
 ```mermaid
-classDef box fill:#FFFFFF, stroke:#000, stroke-width:2px;
 graph LR
+    classDef box fill:#FFFFFF, stroke:#000, stroke-width:2px;
+
     A[get new detected object]:::box --> B{type exists?}
     B --> |NO|C[add to memory as new]:::box
     C --> J[occurance++, forgotten = false]:::box
@@ -28,6 +29,8 @@ graph LR
 Simplified algorithm to update objects:  
 ```mermaid
 graph LR
+    classDef box fill:#FFFFFF, stroke:#000, stroke-width:2px;
+    
     A{forgotten == true}:::box -->|YES| B{occurance--}
     B --> C[occurance == 0]:::box
     C --> |YES|D[delete obj]:::box
@@ -111,6 +114,8 @@ Tracks visually detected objects in 2d space. Works with unoriented objects. Kal
 Simplified algorithm to add new object:  
 ```mermaid
 graph LR
+    classDef box fill:#FFFFFF, stroke:#000, stroke-width:2px;
+    
     A[get new object]:::box --> B{type exists?}:::box
     
     Z[Reject object]:::box
@@ -133,6 +138,8 @@ graph LR
 Simplified algorithm to handle existing filters:  
 ```mermaid
 graph LR
+    classDef box fill:#FFFFFF, stroke:#000, stroke-width:2px;
+    
     A{lifetime > now - last_update} --> |YES|B[remove KF]:::box
     A --> |NO|C[predict KF]:::box
 ```
