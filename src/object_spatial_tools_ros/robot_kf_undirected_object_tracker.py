@@ -158,7 +158,8 @@ class RobotKFUndirectedObjectTracker(object):
                 t.transform.translation.x = kf.x[0]
                 t.transform.translation.y = kf.x[1]
                 
-                t.transform.rotation.w = 1
+                #t.transform.rotation.w = 1
+                t.transform.rotation = quaternion_msg_from_yaw(np.arctan2(kf.x[3], kf.x[2]))
                 
                 self.tf_broadcaster.sendTransform(t)                
         
