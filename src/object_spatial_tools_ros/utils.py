@@ -62,37 +62,25 @@ def quaternion_msg_from_yaw(yaw):
     return msg
 
 '''
-Sm is inv cov matrixes
+Calculates pairvise mahalanobis distances between new values x, old values y with correspondence to old values covariations
+    x - new values, array of [K, N]
+    y - old values, array of [M, N]
+    Sm - inverted cov matrixes for y, array of [M, N, N]
+returns
+    array [K, M]
 '''
 def multi_mahalanobis(x, y, Sm):
     
-    #print(x.shape, y.shape)
-    
     xx = np.tile(x, (y.shape[0],1))
-    yy = np.repeat(y, x.shape[0], axis = 0)
+    yy = np.repeat(y, x.shape[0], axis = 0)                        
+    SSm = np.repeat(Sm, x.shape[0], axis = 0)        
             
-    
-    SSm = np.repeat(Sm, x.shape[0], axis = 0)
-    
-    #print(xx.shape, yy.shape)
-    
-    d = xx - yy
-        
+    d = xx - yy        
     de = np.expand_dims(d, 1)
-    dee = np.expand_dims(d, 2)
+    dee = np.expand_dims(d, 2)                
     
-    #print(de.shape, SSm.shape)
-    
-    D = np.matmul(de, SSm)
-    #print(D.shape)
-    #D = D.squeeze(1)
-    
-    
-    D = np.sqrt( np.matmul( D, dee))
-    
-    D = D.reshape((x.shape[0], y.shape[0]))
+    D = np.matmul(de, SSm)              
+    D = np.sqrt( np.matmul(D, dee) )        
+    D = D.reshape( (x.shape[0], y.shape[0]), order = 'F' )
     
     return D
-    
-    
-    
