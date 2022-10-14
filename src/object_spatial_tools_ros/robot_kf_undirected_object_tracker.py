@@ -30,6 +30,7 @@ class SingleKFUndirectedObjectTracker(object):
         self.R = np.diag(R_diag)
         self.k_decay = k_decay
         
+        self.predict_steps = 0
         
         self.H = np.array([[1, 0, 0, 0],
                            [0, 1, 0, 0]])
@@ -47,6 +48,8 @@ class SingleKFUndirectedObjectTracker(object):
         dt = t - max(self.last_t, self.last_upd_t)
         self.last_t = t
         
+        
+        
         F = np.array([[1, 0, dt ,0],
                            [0, 1, 0 ,dt],
                            [0, 0, self.k_decay, 0],
@@ -57,6 +60,8 @@ class SingleKFUndirectedObjectTracker(object):
         self.P = np.matmul( np.matmul(F, self.P), F.T) + self.Q
         
         self.track.append(self.x.copy())
+        
+        self.predict_steps += 1
         
             
     '''
@@ -77,6 +82,8 @@ class SingleKFUndirectedObjectTracker(object):
         self.P = np.matmul((self.I - np.matmul(K, self.H)), self.P)
         
         self.track.append(self.x.copy())
+        
+        self.predict_steps = 0
 
 class RobotKFUndirectedObjectTracker(object):
     
@@ -172,6 +179,7 @@ class RobotKFUndirectedObjectTracker(object):
             for i, kf in enumerate(kfs):
                 msg = TrackedObject()
                 msg.child_frame_id = self.tf_pub_prefix+name+f'_{i}'
+                msg.predict_steps = kf.predict_steps
                 
                 msg.pose.pose.position.x = kf.x[0]
                 msg.pose.pose.position.y = kf.x[1]

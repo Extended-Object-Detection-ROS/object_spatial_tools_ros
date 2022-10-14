@@ -1,3 +1,4 @@
 string child_frame_id
+uint8 predict_steps
 geometry_msgs/PoseWithCovariance pose
 geometry_msgs/TwistWithCovariance twist
