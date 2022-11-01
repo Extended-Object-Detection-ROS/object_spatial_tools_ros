@@ -54,6 +54,9 @@ graph LR
 - __~memory_map__ (visualization_msgs/MarkerArray) visualization of results
 - TODO: results itself!
 
+### Provided services
+- __~get_closest_object__ (object_spatial_tools_ros/GetClosesrObject) returns coordinates of closest object to given frame
+
 ## 2. robot_semantic_map_processor_node.py
 Creates an 'semantic map layer' which contains position, names and sizes of objects.
 
