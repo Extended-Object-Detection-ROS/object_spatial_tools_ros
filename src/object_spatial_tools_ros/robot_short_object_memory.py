@@ -3,10 +3,12 @@ import rospy
 from extended_object_detection.msg import SimpleObjectArray, ComplexObjectArray
 import tf2_ros
 import tf2_geometry_msgs
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Transform
 import numpy as np
 from visualization_msgs.msg import Marker
 from object_spatial_tools_ros.utils import obj_transform_to_pose, get_common_transform
+from object_spatial_tools_ros.srv import GetClosestObject, GetClosestObjectResponse
+from std_msgs.msg import Header
 
 class RobotShortObjectMemory(object):
     
@@ -48,6 +50,54 @@ class RobotShortObjectMemory(object):
         
         rospy.Subscriber('simple_objects', SimpleObjectArray, self.sobject_cb)
         rospy.Subscriber('complex_objects', ComplexObjectArray, self.cobject_cb)
+        
+        rospy.Service('~get_closest_object', GetClosestObject, self.get_closest_object_cb)
+        
+    def get_closest_object_cb(self, req):
+        #print(req)
+        res = GetClosestObjectResponse()
+        if len(self.memory) == 0:
+            return res
+        if req.object_type != "":
+            same_types_obj = [obj for obj in self.memory if obj['type'] == req.object_type]
+            res.object_type = req.object_type
+        else:
+            return res # TODO add search from all objects
+        
+        hdr = Header()
+        hdr.stamp = rospy.Time.now()
+        hdr.frame_id = self.target_frame
+        target_pose_odom = get_common_transform(self.tf_buffer, hdr, req.frame_id)
+        if target_pose_odom is None:
+            return res
+        
+        np_poses = np.array([obj['np_pose'] for obj in same_types_obj])
+        
+        target_pose = np.array([target_pose_odom.transform.translation.x,
+                                target_pose_odom.transform.translation.y,
+                                target_pose_odom.transform.translation.z])
+        
+        
+        dists_squared = (np_poses[:,0] - target_pose[0])**2 + (np_poses[:,1] - target_pose[1])**2 + (np_poses[:,2] - target_pose[2])**2
+        
+        min_ind = np.argmin(dists_squared)
+        
+        ps = PoseStamped()
+        ps.header.frame_id = self.target_frame
+        ps.header.stamp = rospy.Time.now()
+        ps.pose = same_types_obj[min_ind]['pose']
+        
+        res.position = tf2_geometry_msgs.do_transform_pose(ps, target_pose_odom).pose.position
+        
+        #res.translation.x = same_types_obj[min_ind]['np_pose'][0]
+        #res.translation.y = same_types_obj[min_ind]['np_pose'][1]
+        #res.translation.z = same_types_obj[min_ind]['np_pose'][2]
+        
+        res.result = True
+        res.sub_type = same_types_obj[min_ind]['sub_type']
+                
+        return res
+        
         
     def update_cb(self, event):
         now = rospy.Time.now()
@@ -136,8 +186,8 @@ class RobotShortObjectMemory(object):
         
     def cobject_cb(self, msg):
         transform = get_common_transform(self.tf_buffer, msg.header, self.target_frame)
-        for obj in msg.complex_objects:
-            self.proceed_object(msg.header, obj, transform)
+        for obj in msg.objects:
+            self.proceed_object(msg.header, obj.complex_object, transform)
         
     
     def proceed_object(self, header, object_, transform):
@@ -148,12 +198,15 @@ class RobotShortObjectMemory(object):
             new_object['sub_type'] = '_'.join(object_.extracted_info.values)
         else:
             new_object['sub_type'] = ""
+        #print(new_object['sub_type'])
         
         ps = obj_transform_to_pose(object_.transform, header)
+        #print(ps)
         new_object['pose'] = tf2_geometry_msgs.do_transform_pose(ps, transform).pose
         new_object['np_pose'] = np.array([new_object['pose'].position.x, new_object['pose'].position.y, new_object['pose'].position.z])
-        r = np.abs(object_.rect.cornerTranslates[1].x - object_.rect.cornerTranslates[2].x)/2
-        h = np.abs(object_.rect.cornerTranslates[0].y - object_.rect.cornerTranslates[1].y)
+        r = np.abs(object_.rect.cornerTranslates[0].x - object_.rect.cornerTranslates[1].x)/2
+        h = np.abs(object_.rect.cornerTranslates[1].y - object_.rect.cornerTranslates[2].y)
+        #print(r, h)
         new_object['volume'] = {'radius': r, 'height': h}
         new_object['occurr'] = 1
         new_object['stamp'] = header.stamp
@@ -164,15 +217,18 @@ class RobotShortObjectMemory(object):
         self.add_object_to_memory(new_object)        
         #print(len(self.memory))
         
-    def add_object_to_memory(self, new_object):
+    def add_object_to_memory(self, new_object):        
         if len(self.memory) == 0:
-            self.memory.append(new_object)
+            self.memory.append(new_object)        
         else:
             same_types_obj = [obj for obj in self.memory if obj['type'] == new_object['type']]
+            #print(same_types_obj)
             if len(same_types_obj) == 0:
                 self.memory.append(new_object)
             else:
-                same_sub_types = [obj for obj in same_types_obj if obj['sub_type'] == new_object['sub_type'] and obj['stamp'] != new_object['stamp']]
+                same_sub_types = [obj for obj in same_types_obj if obj['sub_type'] == new_object['sub_type']]# and obj['stamp'] != new_object['stamp']]
+                
+                #print(len(same_sub_types))
                 if len(same_sub_types) == 0:
                     self.memory.append(new_object)
                 else:
@@ -196,9 +252,9 @@ class RobotShortObjectMemory(object):
                     
                     thresh = (new_object['volume']['radius'] * 2 + new_object['volume']['height']) * self.score_multiplyer
                     
+                    #print(thresh, min_score)
                     if thresh > min_score:
-                        
-                        
+                                                
                         if self.update_count_thresh != 0:
                             num = self.update_count_thresh
                         else:
@@ -219,6 +275,7 @@ class RobotShortObjectMemory(object):
                         
                     else:
                         self.memory.append(new_object)
+                
                     
     
     def run(self):

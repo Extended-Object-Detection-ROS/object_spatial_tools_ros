@@ -1,0 +1,7 @@
+string frame_id
+string object_type
+---
+bool result
+string object_type
+string sub_type
+geometry_msgs/Point position
