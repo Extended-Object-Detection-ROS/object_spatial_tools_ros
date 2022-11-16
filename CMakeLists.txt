@@ -60,6 +60,7 @@ add_message_files(
 add_service_files(
   FILES
   GetClosestObject.srv
+  GetObject.srv
 )
 
 ## Generate actions in the 'action' folder
