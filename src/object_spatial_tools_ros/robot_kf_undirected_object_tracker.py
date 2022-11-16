@@ -11,6 +11,8 @@ from visualization_msgs.msg import Marker, MarkerArray
 from threading import Lock
 from geometry_msgs.msg import TransformStamped, Point
 from object_spatial_tools_ros.msg import TrackedObject, TrackedObjectArray
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 class SingleKFUndirectedObjectTracker(object):
     
@@ -19,9 +21,10 @@ class SingleKFUndirectedObjectTracker(object):
     t_start - time stamp for init
     Q_list - diagonale of Q matrix [Qx, Qy, Qvx, Qvy]
     R_diag - diagonale of R matrix [Rx, Ry]    
-    k_decay - coefficien of speed reduction, default = 1    
+    k_decay - coefficien of speed reduction
+    color - (r, g, b) each normlized on 1
     '''
-    def __init__(self, x_start, t_start, Q_diag, R_diag, k_decay = 1):
+    def __init__(self, x_start, t_start, Q_diag, R_diag, k_decay, color):
         
         self.x = np.array([x_start[0], x_start[1], 0.0, 0.0])
         self.last_t = t_start
@@ -29,6 +32,8 @@ class SingleKFUndirectedObjectTracker(object):
         self.Q = np.diag(Q_diag)
         self.R = np.diag(R_diag)
         self.k_decay = k_decay
+        
+        self.color = color
         
         self.predict_steps = 0
         
@@ -113,10 +118,18 @@ class RobotKFUndirectedObjectTracker(object):
         self.k_decay = rospy.get_param('~k_decay', 1)
         self.lifetime = rospy.get_param('~lifetime', 0)
         self.mahalanobis_max = rospy.get_param('~mahalanobis_max', 1)
+        
+        self.approve_thrash = rospy.get_param('~approve_thrash', 1)
+        
                 
         self.min_score = rospy.get_param('~min_score', 0)
         self.min_score_soft = rospy.get_param('~min_score_soft', self.min_score)
         
+        self.colors = []
+        for c in plt.rcParams['axes.prop_cycle'].by_key()['color']:
+            #print(type(mpl.colors.to_rgb(c)))
+            self.colors.append(mpl.colors.to_rgb(c))
+        self.current_color = 0
         
         self.mutex = Lock()
         
@@ -208,8 +221,37 @@ class RobotKFUndirectedObjectTracker(object):
         now = rospy.Time.now()
         marker_array = MarkerArray()
         for name, kfs in self.objects_to_KFs.items():
-            i = 0
+            i = -1
             for i, kf in enumerate(kfs):
+                # TEXT
+                marker = Marker()
+                
+                marker.header.stamp = now
+                marker.header.frame_id = self.target_frame
+                
+                marker.ns = name+"_text"
+                marker.id = i
+                
+                marker.type = Marker.TEXT_VIEW_FACING
+                marker.action = Marker.ADD
+                
+                marker.pose.position.x = kf.x[0]
+                marker.pose.position.y = kf.x[1]                                                
+                marker.pose.position.z = 0.2
+                
+                marker.pose.orientation.w = 1
+                                                
+                marker.color.r, marker.color.g, marker.color.b = kf.color
+                marker.color.a = 1
+                
+                marker.scale.x = 0.3
+                marker.scale.y = 0.3
+                marker.scale.z = 0.3
+                
+                marker.text = name+f"_{i}"
+                
+                marker_array.markers.append(marker)
+                
                 # POSE AND SPEED
                 marker = Marker()
                 
@@ -227,7 +269,8 @@ class RobotKFUndirectedObjectTracker(object):
                 
                 marker.pose.orientation = quaternion_msg_from_yaw(np.arctan2(kf.x[3], kf.x[2]))
                                 
-                marker.color.r = 1
+                #marker.color.r = 1
+                marker.color.r, marker.color.g, marker.color.b = kf.color
                 marker.color.a = 1
                 
                 marker.scale.x = np.hypot(kf.x[3], kf.x[2])
@@ -251,8 +294,9 @@ class RobotKFUndirectedObjectTracker(object):
                 marker.pose.position.x = kf.x[0]
                 marker.pose.position.y = kf.x[1]                
                                 
-                marker.color.r = 1
-                marker.color.b = 1
+                #marker.color.r = 1
+                #marker.color.b = 1
+                marker.color.r, marker.color.g, marker.color.b = kf.color
                 marker.color.a = 0.5
                 
                 r1, r2, th = get_cov_ellipse_params(kf.P[:2,:2])
@@ -263,6 +307,8 @@ class RobotKFUndirectedObjectTracker(object):
                 marker.pose.orientation = quaternion_msg_from_yaw(th)
                 
                 marker_array.markers.append(marker)
+                                
+                
                 
                 # TRACK
                 marker = Marker()
@@ -277,7 +323,8 @@ class RobotKFUndirectedObjectTracker(object):
                 marker.action = Marker.ADD
                 
                 marker.scale.x = 0.03
-                marker.color.g = 1
+                #marker.color.g = 1
+                marker.color.r, marker.color.g, marker.color.b = kf.color
                 marker.color.a = 1
                 marker.pose.orientation.w = 1
                 
@@ -291,7 +338,7 @@ class RobotKFUndirectedObjectTracker(object):
                 
                 
             for j in range(i+1, self.KFs_prev_elements[name]):
-                for t in ["_el","_pose", "_track"]:
+                for t in ["_text", "_el","_pose", "_track"]:
                     marker = Marker()                
                     marker.header.stamp = now
                     marker.ns = name+t
@@ -357,7 +404,10 @@ class RobotKFUndirectedObjectTracker(object):
                 for pose in poses:                
                     if pose[2] == 1:
                         continue # skip soft_tracking
-                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(pose[:2], now, self.Qdiag, self.Rdiag, self.k_decay))
+                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(pose[:2], now, self.Qdiag, self.Rdiag, self.k_decay, self.colors[self.current_color]))
+                    self.current_color += 1
+                    if self.current_color > len(self.colors):
+                        self.current_color = 0
             else:
                 
                 m_poses_np = np.array(poses)[:,:2] # [[x, y]]
@@ -389,7 +439,10 @@ class RobotKFUndirectedObjectTracker(object):
                 for i in extra_poses:      
                     if poses[i][2] == 1: # soft_tracking
                         continue
-                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(poses[i], now, self.Qdiag, self.Rdiag, self.k_decay))        
+                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(poses[i], now, self.Qdiag, self.Rdiag, self.k_decay, self.colors[self.current_color]))
+                    self.current_color += 1
+                    if self.current_color > len(self.colors):
+                        self.current_color = 0
         
         
                         
