@@ -1,0 +1,4 @@
+string object_type
+string sub_type
+---
+bool result

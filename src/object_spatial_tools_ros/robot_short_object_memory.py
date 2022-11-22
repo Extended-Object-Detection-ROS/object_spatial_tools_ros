@@ -7,7 +7,7 @@ from geometry_msgs.msg import PoseStamped, Transform
 import numpy as np
 from visualization_msgs.msg import Marker
 from object_spatial_tools_ros.utils import obj_transform_to_pose, get_common_transform
-from object_spatial_tools_ros.srv import GetClosestObject, GetClosestObjectResponse, GetObject, GetObjectResponse
+from object_spatial_tools_ros.srv import GetClosestObject, GetClosestObjectResponse, GetObject, GetObjectResponse, IgnoreObject, IgnoreObjectResponse
 from std_msgs.msg import Header
 
 class RobotShortObjectMemory(object):
@@ -30,6 +30,7 @@ class RobotShortObjectMemory(object):
         self.tf_buffer = tf2_ros.Buffer(rospy.Duration(100.0))  # tf buffer length
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         
+        self.ignore_list = []
         '''
         object:
             type: str
@@ -53,7 +54,25 @@ class RobotShortObjectMemory(object):
         
         rospy.Service('~get_closest_object', GetClosestObject, self.get_closest_object_cb)
         rospy.Service('~get_object', GetObject, self.get_object_cb)
+        rospy.Service('~ignore_object', IgnoreObject, self.ignore_object_cb)
         
+    
+    def ignore_object_cb(self, req):
+        res = IgnoreObjectResponse()
+        self.ignore_list.append((req.object_type, req.sub_type))
+        
+        delete_ind = []
+        for i, obj in enumerate(self.memory):
+            if obj['type'] == req.object_type and obj['sub_type'] == req.sub_type:
+                delete_ind.append(i)
+        
+        if len(delete_ind):
+            res.result = True
+        
+        for index in sorted(delete_ind, reverse=True):
+            del self.memory[index]
+        
+        return res
         
     def get_object_cb(self, req):
         res = GetObjectResponse()
@@ -229,6 +248,9 @@ class RobotShortObjectMemory(object):
         else:
             new_object['sub_type'] = ""
         #print(new_object['sub_type'])
+        
+        if (new_object['type'], new_object['sub_type']) in self.ignore_list:
+            return
         
         ps = obj_transform_to_pose(object_.transform, header)
         #print(ps)
