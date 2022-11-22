@@ -235,6 +235,8 @@ class RobotShortObjectMemory(object):
         
     def cobject_cb(self, msg):
         transform = get_common_transform(self.tf_buffer, msg.header, self.target_frame)
+        if transform is None:
+            return
         for obj in msg.objects:
             self.proceed_object(msg.header, obj.complex_object, transform)
         
