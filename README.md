@@ -57,6 +57,7 @@ graph LR
 ### Provided services
 - __~get_object__ (object_spatial_tools_ros/GetObject) returns coordinates of object with specified type and subtype, but only if it represented once in memory
 - __~get_closest_object__ (object_spatial_tools_ros/GetClosestObject) returns coordinates of closest object to given frame
+- __~ignore_object__ (object_spatial_tools_ros/IgnoreObject) sets some object to ignore (removes previous info and futher precessing)
 
 ## 2. robot_semantic_map_processor_node.py
 Creates an 'semantic map layer' which contains position, names and sizes of objects.
