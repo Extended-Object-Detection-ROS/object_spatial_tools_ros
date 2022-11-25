@@ -368,7 +368,7 @@ class RobotKFUndirectedObjectTracker(object):
             self.mutex.release()
             return
         
-        self.proceed_objects(msg.header, msg.complex_objects, transform, now)
+        self.proceed_objects(msg.header, [cmp.complex_object for cmp in msg.objects], transform, now)
         self.mutex.release()
         
         
@@ -406,7 +406,7 @@ class RobotKFUndirectedObjectTracker(object):
                         continue # skip soft_tracking
                     self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(pose[:2], now, self.Qdiag, self.Rdiag, self.k_decay, self.colors[self.current_color]))
                     self.current_color += 1
-                    if self.current_color > len(self.colors):
+                    if self.current_color >= len(self.colors):
                         self.current_color = 0
             else:
                 
@@ -439,9 +439,9 @@ class RobotKFUndirectedObjectTracker(object):
                 for i in extra_poses:      
                     if poses[i][2] == 1: # soft_tracking
                         continue
-                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(poses[i], now, self.Qdiag, self.Rdiag, self.k_decay, self.colors[self.current_color]))
+                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(poses[i][:2], now, self.Qdiag, self.Rdiag, self.k_decay, self.colors[self.current_color]))
                     self.current_color += 1
-                    if self.current_color > len(self.colors):
+                    if self.current_color >= len(self.colors):
                         self.current_color = 0
         
         
