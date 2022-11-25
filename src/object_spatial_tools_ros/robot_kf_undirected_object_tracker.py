@@ -176,14 +176,17 @@ class RobotKFUndirectedObjectTracker(object):
     def to_tf(self):
         now = rospy.Time.now()
         
-        if self.sort_by_score:
-            mass = sorted(list(self.objects_to_KFs.items()), key=lambda x: x[1].score)
-        else:
-            mass = list(self.objects_to_KFs.items())
+        #if self.sort_by_score:
+            #mass = sorted(list(self.objects_to_KFs.items()), key=lambda x: x[1].score)
+        #else:
+            #mass = list(self.objects_to_KFs.items())
         
-        #for name, kfs in self.objects_to_KFs.items():               
-        for name, kfs in mass:               
+        for name, kfs in self.objects_to_KFs.items():               
+        #for name, kfs in mass:               
         
+            if self.sort_by_score:
+                kfs = sorted(kfs, key=lambda x: x.score)            
+            
             for i, kf in enumerate(kfs):
                 
                 t = TransformStamped()
@@ -206,13 +209,18 @@ class RobotKFUndirectedObjectTracker(object):
         msg_array.header.stamp = rospy.Time.now()
         msg_array.header.frame_id = self.target_frame
         
-        if self.sort_by_score:
-            mass = sorted(list(self.objects_to_KFs.items()), key=lambda x: x[1].score)
-        else:
-            mass = list(self.objects_to_KFs.items())
-        for name, kfs in mass:               
-        #for name, kfs in self.objects_to_KFs.items():
-            for i, kf in enumerate(kfs):
+        #if self.sort_by_score:
+            #mass = sorted(list(self.objects_to_KFs.items()), key=lambda x: x[1].score)
+        #else:
+            #mass = list(self.objects_to_KFs.items())
+        #for name, kfs in mass:               
+        for name, kfs in self.objects_to_KFs.items():
+            
+            if self.sort_by_score:
+                kfs = sorted(kfs, key=lambda x: x.score)
+            
+            for i, kf in enumerate(kfs):                
+                
                 msg = TrackedObject()
                 msg.child_frame_id = self.tf_pub_prefix+name+f'_{i}'
                 msg.predict_steps = kf.predict_steps
@@ -243,13 +251,19 @@ class RobotKFUndirectedObjectTracker(object):
     def to_marker_array(self):
         now = rospy.Time.now()
         marker_array = MarkerArray()
-        if self.sort_by_score:
-            mass = sorted(list(self.objects_to_KFs.items()), key=lambda x: x[1].score)
-        else:
-            mass = list(self.objects_to_KFs.items())
-        for name, kfs in mass:               
-        #for name, kfs in self.objects_to_KFs.items():
+        #if self.sort_by_score:
+            #mass = sorted(list(self.objects_to_KFs.items()), key=lambda x: x[1].score)
+        #else:
+            #mass = list(self.objects_to_KFs.items())
+        #for name, kfs in mass:               
+                
+        
+        for name, kfs in self.objects_to_KFs.items():
             i = -1
+            
+            if self.sort_by_score:
+                kfs = sorted(kfs, key=lambda x: x.score)
+            
             for i, kf in enumerate(kfs):
                 # TEXT
                 marker = Marker()
@@ -409,17 +423,20 @@ class RobotKFUndirectedObjectTracker(object):
                 
                 if obj.transform.translation.z == 1:
                     continue
-                
-                if obj.score < self.min_score:
-                    if obj.score < self.min_score_soft:
+                    
+                if obj.score < self.min_score:  
+                    if obj.score < self.min_score_soft:                    
                         continue    
-                    soft_tracking = True
-                
+                    soft_tracking = True                  
+                                    
+                #if self.sort_by_score:                                            
+                    #kfs = sorted(kfs, key=lambda x: x.score)
+                                    
                 ps = obj_transform_to_pose(obj.transform, header)
                 
                 ps_transformed = tf2_geometry_msgs.do_transform_pose(ps, transform).pose
                 
-                ps_np = np.array([ps_transformed.position.x, ps_transformed.position.y, float(soft_tracking)])
+                ps_np = np.array([ps_transformed.position.x, ps_transformed.position.y, float(soft_tracking), obj.score])
                 
                 if obj.type_name in detected_objects:
                     detected_objects[obj.type_name].append(ps_np)
@@ -432,7 +449,7 @@ class RobotKFUndirectedObjectTracker(object):
                 for pose in poses:                
                     if pose[2] == 1:
                         continue # skip soft_tracking
-                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(pose[:2], now, self.Qdiag, self.Rdiag, self.k_decay, self.colors[self.current_color]))
+                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(pose[:2], now, self.Qdiag, self.Rdiag, self.k_decay, self.colors[self.current_color], pose[3]))
                     self.current_color += 1
                     if self.current_color >= len(self.colors):
                         self.current_color = 0
@@ -457,7 +474,7 @@ class RobotKFUndirectedObjectTracker(object):
                     if D[closest] > self.mahalanobis_max:
                         break
                                         
-                    self.objects_to_KFs[obj_name][closest[1]].update(poses[closest[0]][:2], now)
+                    self.objects_to_KFs[obj_name][closest[1]].update(poses[closest[0]][:2], now, poses[closest[0]][3])
                     
                     D[closest[0],:] = np.inf
                     D[:,closest[1]] = np.inf
@@ -467,7 +484,9 @@ class RobotKFUndirectedObjectTracker(object):
                 for i in extra_poses:      
                     if poses[i][2] == 1: # soft_tracking
                         continue
-                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(poses[i][:2], now, self.Qdiag, self.Rdiag, self.k_decay, self.colors[self.current_color]))
+
+                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(poses[i][:2], now, self.Qdiag, self.Rdiag, self.k_decay, self.colors[self.current_color], poses[i][3]))
+
                     self.current_color += 1
                     if self.current_color >= len(self.colors):
                         self.current_color = 0
