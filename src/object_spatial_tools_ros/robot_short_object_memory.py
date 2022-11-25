@@ -7,7 +7,7 @@ from geometry_msgs.msg import PoseStamped, Transform
 import numpy as np
 from visualization_msgs.msg import Marker
 from object_spatial_tools_ros.utils import obj_transform_to_pose, get_common_transform
-from object_spatial_tools_ros.srv import GetClosestObject, GetClosestObjectResponse
+from object_spatial_tools_ros.srv import GetClosestObject, GetClosestObjectResponse, GetObject, GetObjectResponse, IgnoreObject, IgnoreObjectResponse
 from std_msgs.msg import Header
 
 class RobotShortObjectMemory(object):
@@ -30,6 +30,7 @@ class RobotShortObjectMemory(object):
         self.tf_buffer = tf2_ros.Buffer(rospy.Duration(100.0))  # tf buffer length
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         
+        self.ignore_list = []
         '''
         object:
             type: str
@@ -52,6 +53,58 @@ class RobotShortObjectMemory(object):
         rospy.Subscriber('complex_objects', ComplexObjectArray, self.cobject_cb)
         
         rospy.Service('~get_closest_object', GetClosestObject, self.get_closest_object_cb)
+        rospy.Service('~get_object', GetObject, self.get_object_cb)
+        rospy.Service('~ignore_object', IgnoreObject, self.ignore_object_cb)
+        
+    
+    def ignore_object_cb(self, req):
+        res = IgnoreObjectResponse()
+        self.ignore_list.append((req.object_type, req.sub_type))
+        
+        delete_ind = []
+        for i, obj in enumerate(self.memory):
+            if obj['type'] == req.object_type and obj['sub_type'] == req.sub_type:
+                delete_ind.append(i)
+        
+        if len(delete_ind):
+            res.result = True
+        
+        for index in sorted(delete_ind, reverse=True):
+            del self.memory[index]
+        
+        return res
+        
+    def get_object_cb(self, req):
+        res = GetObjectResponse()
+        if len(self.memory) == 0:
+            return res
+        
+        objs = [obj for obj in self.memory if obj['type'] == req.object_type and obj['sub_type'] == req.sub_type]
+        if len(objs) != 1:
+            return res
+                
+        hdr = Header()
+        hdr.stamp = rospy.Time.now()
+        hdr.frame_id = self.target_frame
+        target_pose_odom = get_common_transform(self.tf_buffer, hdr, req.frame_id)
+        if target_pose_odom is None:
+            return res
+        
+        target_pose = np.array([target_pose_odom.transform.translation.x,
+                                target_pose_odom.transform.translation.y,
+                                target_pose_odom.transform.translation.z])
+        
+        ps = PoseStamped()
+        ps.header.frame_id = self.target_frame
+        ps.header.stamp = rospy.Time.now()
+        ps.pose = objs[0]['pose']
+        
+        res.position = tf2_geometry_msgs.do_transform_pose(ps, target_pose_odom).pose.position                        
+        res.result = True
+        
+        return res
+        
+        
         
     def get_closest_object_cb(self, req):
         #print(req)
@@ -87,11 +140,7 @@ class RobotShortObjectMemory(object):
         ps.header.stamp = rospy.Time.now()
         ps.pose = same_types_obj[min_ind]['pose']
         
-        res.position = tf2_geometry_msgs.do_transform_pose(ps, target_pose_odom).pose.position
-        
-        #res.translation.x = same_types_obj[min_ind]['np_pose'][0]
-        #res.translation.y = same_types_obj[min_ind]['np_pose'][1]
-        #res.translation.z = same_types_obj[min_ind]['np_pose'][2]
+        res.position = tf2_geometry_msgs.do_transform_pose(ps, target_pose_odom).pose.position                
         
         res.result = True
         res.sub_type = same_types_obj[min_ind]['sub_type']
@@ -186,6 +235,8 @@ class RobotShortObjectMemory(object):
         
     def cobject_cb(self, msg):
         transform = get_common_transform(self.tf_buffer, msg.header, self.target_frame)
+        if transform is None:
+            return
         for obj in msg.objects:
             self.proceed_object(msg.header, obj.complex_object, transform)
         
@@ -199,6 +250,9 @@ class RobotShortObjectMemory(object):
         else:
             new_object['sub_type'] = ""
         #print(new_object['sub_type'])
+        
+        if (new_object['type'], new_object['sub_type']) in self.ignore_list:
+            return
         
         ps = obj_transform_to_pose(object_.transform, header)
         #print(ps)

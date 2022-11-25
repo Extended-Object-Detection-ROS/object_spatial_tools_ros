@@ -23,8 +23,9 @@ class SingleKFUndirectedObjectTracker(object):
     R_diag - diagonale of R matrix [Rx, Ry]    
     k_decay - coefficien of speed reduction
     color - (r, g, b) each normlized on 1
+    score - initial score for object
     '''
-    def __init__(self, x_start, t_start, Q_diag, R_diag, k_decay, color):
+    def __init__(self, x_start, t_start, Q_diag, R_diag, k_decay, color, score):
         
         self.x = np.array([x_start[0], x_start[1], 0.0, 0.0])
         self.last_t = t_start
@@ -32,6 +33,7 @@ class SingleKFUndirectedObjectTracker(object):
         self.Q = np.diag(Q_diag)
         self.R = np.diag(R_diag)
         self.k_decay = k_decay
+        self.score = score
         
         self.color = color
         
@@ -68,12 +70,15 @@ class SingleKFUndirectedObjectTracker(object):
         
         self.predict_steps += 1
         
+        self.score *= self.k_decay
+        
             
     '''
     z - measured x, y values
     t - time stamp for update, seconds
+    score - score of new measurment
     '''
-    def update(self, z, t):
+    def update(self, z, t, score):
         self.last_upd_t = t
                 
         y = z - np.matmul(self.H, self.x)
@@ -89,6 +94,8 @@ class SingleKFUndirectedObjectTracker(object):
         self.track.append(self.x.copy())
         
         self.predict_steps = 0
+        
+        self.score = score
 
 class RobotKFUndirectedObjectTracker(object):
     
@@ -125,6 +132,8 @@ class RobotKFUndirectedObjectTracker(object):
         self.min_score = rospy.get_param('~min_score', 0)
         self.min_score_soft = rospy.get_param('~min_score_soft', self.min_score)
         
+        self.sort_by_score = rospy.get_param("~sort_by_score", False)
+        
         self.colors = []
         for c in plt.rcParams['axes.prop_cycle'].by_key()['color']:
             #print(type(mpl.colors.to_rgb(c)))
@@ -157,7 +166,7 @@ class RobotKFUndirectedObjectTracker(object):
         
                 #rospy.logwarn(f"{name} {i} {kf.x} {kf.P}")
             for index in sorted(remove_index, reverse=True):
-                del kfs[index]
+                del kfs[index]                        
                 
         self.to_marker_array()
         self.to_tf()
@@ -166,7 +175,15 @@ class RobotKFUndirectedObjectTracker(object):
         
     def to_tf(self):
         now = rospy.Time.now()
-        for name, kfs in self.objects_to_KFs.items():
+        
+        if self.sort_by_score:
+            mass = sorted(list(self.objects_to_KFs.items()), key=lambda x: x[1].score)
+        else:
+            mass = list(self.objects_to_KFs.items())
+        
+        #for name, kfs in self.objects_to_KFs.items():               
+        for name, kfs in mass:               
+        
             for i, kf in enumerate(kfs):
                 
                 t = TransformStamped()
@@ -188,7 +205,13 @@ class RobotKFUndirectedObjectTracker(object):
         msg_array = TrackedObjectArray()
         msg_array.header.stamp = rospy.Time.now()
         msg_array.header.frame_id = self.target_frame
-        for name, kfs in self.objects_to_KFs.items():
+        
+        if self.sort_by_score:
+            mass = sorted(list(self.objects_to_KFs.items()), key=lambda x: x[1].score)
+        else:
+            mass = list(self.objects_to_KFs.items())
+        for name, kfs in mass:               
+        #for name, kfs in self.objects_to_KFs.items():
             for i, kf in enumerate(kfs):
                 msg = TrackedObject()
                 msg.child_frame_id = self.tf_pub_prefix+name+f'_{i}'
@@ -220,7 +243,12 @@ class RobotKFUndirectedObjectTracker(object):
     def to_marker_array(self):
         now = rospy.Time.now()
         marker_array = MarkerArray()
-        for name, kfs in self.objects_to_KFs.items():
+        if self.sort_by_score:
+            mass = sorted(list(self.objects_to_KFs.items()), key=lambda x: x[1].score)
+        else:
+            mass = list(self.objects_to_KFs.items())
+        for name, kfs in mass:               
+        #for name, kfs in self.objects_to_KFs.items():
             i = -1
             for i, kf in enumerate(kfs):
                 # TEXT
