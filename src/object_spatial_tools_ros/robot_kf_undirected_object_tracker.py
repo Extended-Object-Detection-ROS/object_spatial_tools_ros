@@ -185,7 +185,7 @@ class RobotKFUndirectedObjectTracker(object):
         #for name, kfs in mass:               
         
             if self.sort_by_score:
-                kfs = sorted(kfs, key=lambda x: x.score)            
+                kfs = sorted(kfs, key=lambda x: x.score, reverse = True)            
             
             for i, kf in enumerate(kfs):
                 
@@ -217,7 +217,7 @@ class RobotKFUndirectedObjectTracker(object):
         for name, kfs in self.objects_to_KFs.items():
             
             if self.sort_by_score:
-                kfs = sorted(kfs, key=lambda x: x.score)
+                kfs = sorted(kfs, key=lambda x: x.score, reverse = True)
             
             for i, kf in enumerate(kfs):                
                 
@@ -262,7 +262,7 @@ class RobotKFUndirectedObjectTracker(object):
             i = -1
             
             if self.sort_by_score:
-                kfs = sorted(kfs, key=lambda x: x.score)
+                kfs = sorted(kfs, key=lambda x: x.score, reverse = True)
             
             for i, kf in enumerate(kfs):
                 # TEXT
