@@ -195,7 +195,7 @@ class RobotKFUndirectedObjectTracker(object):
         #for name, kfs in mass:               
         
             if self.sort_by_score:
-                kfs = sorted(kfs, key=lambda x: x.score)            
+                kfs = sorted(kfs, key=lambda x: x.score, reverse = True)            
             
             for i, kf in enumerate(kfs):
                 
@@ -227,7 +227,7 @@ class RobotKFUndirectedObjectTracker(object):
         for name, kfs in self.objects_to_KFs.items():
             
             if self.sort_by_score:
-                kfs = sorted(kfs, key=lambda x: x.score)
+                kfs = sorted(kfs, key=lambda x: x.score, reverse = True)
             
             for i, kf in enumerate(kfs):                
                 
@@ -272,7 +272,7 @@ class RobotKFUndirectedObjectTracker(object):
             i = -1
             
             if self.sort_by_score:
-                kfs = sorted(kfs, key=lambda x: x.score)
+                kfs = sorted(kfs, key=lambda x: x.score, reverse = True)
             
             for i, kf in enumerate(kfs):
                 # TEXT
@@ -420,7 +420,7 @@ class RobotKFUndirectedObjectTracker(object):
             self.mutex.release()
             return
         
-        self.proceed_objects(msg.header, msg.complex_objects, transform, now)
+        self.proceed_objects(msg.header, [cmp.complex_object for cmp in msg.objects], transform, now)
         self.mutex.release()
         
         
@@ -433,13 +433,15 @@ class RobotKFUndirectedObjectTracker(object):
                 
                 if obj.transform.translation.z == 1:
                     continue
-                
-                if obj.score < self.min_score:
-                    if obj.score < self.min_score_soft:
-                        continue    if self.sort_by_score:
-                kfs = sorted(kfs, key=lambda x: x.score)
-                    soft_tracking = True
-                
+                    
+                if obj.score < self.min_score:  
+                    if obj.score < self.min_score_soft:                    
+                        continue    
+                    soft_tracking = True                  
+                                    
+                #if self.sort_by_score:                                            
+                    #kfs = sorted(kfs, key=lambda x: x.score)
+                                    
                 ps = obj_transform_to_pose(obj.transform, header)
                 
                 ps_transformed = tf2_geometry_msgs.do_transform_pose(ps, transform).pose
@@ -459,7 +461,7 @@ class RobotKFUndirectedObjectTracker(object):
                         continue # skip soft_tracking
                     self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(pose[:2], now, self.Qdiag, self.Rdiag, self.k_decay, self.colors[self.current_color], pose[3]))
                     self.current_color += 1
-                    if self.current_color > len(self.colors):
+                    if self.current_color >= len(self.colors):
                         self.current_color = 0
             else:
                 
@@ -492,9 +494,11 @@ class RobotKFUndirectedObjectTracker(object):
                 for i in extra_poses:      
                     if poses[i][2] == 1: # soft_tracking
                         continue
-                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(poses[i], now, self.Qdiag, self.Rdiag, self.k_decay, self.colors[self.current_color], poses[i][3]))
+
+                    self.objects_to_KFs[obj_name].append(SingleKFUndirectedObjectTracker(poses[i][:2], now, self.Qdiag, self.Rdiag, self.k_decay, self.colors[self.current_color], poses[i][3]))
+
                     self.current_color += 1
-                    if self.current_color > len(self.colors):
+                    if self.current_color >= len(self.colors):
                         self.current_color = 0
         
         
