@@ -132,8 +132,11 @@ class RobotShortObjectMemory(object):
         
         
         dists_squared = (np_poses[:,0] - target_pose[0])**2 + (np_poses[:,1] - target_pose[1])**2 + (np_poses[:,2] - target_pose[2])**2
-        
+                
         min_ind = np.argmin(dists_squared)
+        
+        if req.max_range != 0 and dists_squared > req.max_range**2:
+            return res
         
         ps = PoseStamped()
         ps.header.frame_id = self.target_frame

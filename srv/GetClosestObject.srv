@@ -1,5 +1,6 @@
 string frame_id
 string object_type
+float64 max_range
 ---
 bool result
 string object_type
