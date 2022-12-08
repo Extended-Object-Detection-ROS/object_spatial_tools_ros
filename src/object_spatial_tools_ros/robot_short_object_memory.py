@@ -135,7 +135,7 @@ class RobotShortObjectMemory(object):
                 
         min_ind = np.argmin(dists_squared)
         
-        if req.max_range != 0 and dists_squared > req.max_range**2:
+        if req.max_range != 0 and dists_squared[min_ind] > req.max_range**2:
             return res
         
         ps = PoseStamped()
