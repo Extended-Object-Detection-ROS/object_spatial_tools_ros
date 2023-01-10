@@ -129,7 +129,7 @@ class RobotKFUndirectedObjectTracker(object):
         self.Rdiag = rospy.get_param('~Rdiag', [0.1, 0.1])
         self.k_decay = rospy.get_param('~k_decay', 1)
         self.lifetime = rospy.get_param('~lifetime', 0)
-        self.lifetime = rospy.get_param('~lifetime_soft', 0)
+        self.lifetime_soft = rospy.get_param('~lifetime_soft', 0)
         self.mahalanobis_max = rospy.get_param('~mahalanobis_max', 1)
         
         self.approve_thrash = rospy.get_param('~approve_thrash', 1)
