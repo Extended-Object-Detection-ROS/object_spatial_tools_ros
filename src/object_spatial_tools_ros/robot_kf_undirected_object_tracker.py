@@ -30,7 +30,7 @@ class SingleKFUndirectedObjectTracker(object):
         self.x = np.array([x_start[0], x_start[1], 0.0, 0.0])
         self.last_t = t_start
         self.last_upd_t = t_start
-        self.last_soft_update = None
+        self.last_soft_update = t_start
         self.Q = np.diag(Q_diag)
         self.R = np.diag(R_diag)
         self.k_decay = k_decay
@@ -81,10 +81,10 @@ class SingleKFUndirectedObjectTracker(object):
     def update(self, z, t, score, soft = False):
         self.last_upd_t = t
         
-        if soft:
+        if not soft:
             self.last_soft_update = t
-        else:
-            self.last_soft_update = None
+        #else:
+            #self.last_soft_update = None
                 
         y = z - np.matmul(self.H, self.x)
         
@@ -129,7 +129,7 @@ class RobotKFUndirectedObjectTracker(object):
         self.Rdiag = rospy.get_param('~Rdiag', [0.1, 0.1])
         self.k_decay = rospy.get_param('~k_decay', 1)
         self.lifetime = rospy.get_param('~lifetime', 0)
-        self.lifetime = rospy.get_param('~lifetime_soft', 0)
+        self.lifetime_soft = rospy.get_param('~lifetime_soft', 0)
         self.mahalanobis_max = rospy.get_param('~mahalanobis_max', 1)
         
         self.approve_thrash = rospy.get_param('~approve_thrash', 1)
@@ -167,7 +167,9 @@ class RobotKFUndirectedObjectTracker(object):
             for i, kf in enumerate(kfs):
                 
                 regular_cond = self.lifetime == 0 or (now - kf.last_upd_t) < self.lifetime
-                soft_cond = (kf.last_soft_update is None) or (now - kf.last_soft_update) < self.lifetime_soft
+                soft_cond = (now - kf.last_soft_update) < self.lifetime_soft
+                
+                #rospy.logerr(f"soft cond {soft_cond} time {now} {kf.last_soft_update}")
                 
                 if regular_cond and soft_cond:
                     kf.predict(now)
