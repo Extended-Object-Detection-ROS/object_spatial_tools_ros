@@ -119,8 +119,9 @@ class RobotShortObjectMemory(object):
         
         hdr = Header()
         hdr.stamp = rospy.Time.now()
-        hdr.frame_id = self.target_frame
-        target_pose_odom = get_common_transform(self.tf_buffer, hdr, req.frame_id)
+        #hdr.frame_id = self.target_frame
+        hdr.frame_id =  req.frame_id
+        target_pose_odom = get_common_transform(self.tf_buffer, hdr, self.target_frame)
         if target_pose_odom is None:
             return res
         
@@ -132,6 +133,7 @@ class RobotShortObjectMemory(object):
         
         
         dists_squared = (np_poses[:,0] - target_pose[0])**2 + (np_poses[:,1] - target_pose[1])**2 + (np_poses[:,2] - target_pose[2])**2
+        print(dists_squared)
                 
         min_ind = np.argmin(dists_squared)
         
@@ -143,6 +145,9 @@ class RobotShortObjectMemory(object):
         ps.header.stamp = rospy.Time.now()
         ps.pose = same_types_obj[min_ind]['pose']
         
+        hdr.frame_id = self.target_frame
+        target_pose_odom = get_common_transform(self.tf_buffer, hdr, req.frame_id)
+
         res.position = tf2_geometry_msgs.do_transform_pose(ps, target_pose_odom).pose.position                
         
         res.result = True
