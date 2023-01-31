@@ -9,6 +9,7 @@ from visualization_msgs.msg import Marker
 from object_spatial_tools_ros.utils import obj_transform_to_pose, get_common_transform
 from object_spatial_tools_ros.srv import GetClosestObject, GetClosestObjectResponse, GetObject, GetObjectResponse, IgnoreObject, IgnoreObjectResponse
 from std_msgs.msg import Header
+from std_srvs.srv import Trigger, TriggerResponse
 
 class RobotShortObjectMemory(object):
     
@@ -55,6 +56,13 @@ class RobotShortObjectMemory(object):
         rospy.Service('~get_closest_object', GetClosestObject, self.get_closest_object_cb)
         rospy.Service('~get_object', GetObject, self.get_object_cb)
         rospy.Service('~ignore_object', IgnoreObject, self.ignore_object_cb)
+        rospy.Service('~restore_ignored', Trigger, self.restore_ignored_cb)
+        
+    def restore_ignored_cb(self, req):
+        res = TriggerResponse()
+        self.ignore_list.clear()
+        res.success = True
+        return res
         
     
     def ignore_object_cb(self, req):
