@@ -27,6 +27,8 @@ class RobotShortObjectMemory(object):
         self.forget_time = rospy.Duration(rospy.get_param('~forget_time', 10))
         
         self.update_count_thresh = rospy.get_param('~update_count_thresh', 0)
+        
+        self.filter_by_z = rospy.get_param('~filter_by_z', 0)
                
         self.tf_buffer = tf2_ros.Buffer(rospy.Duration(100.0))  # tf buffer length
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
@@ -273,6 +275,11 @@ class RobotShortObjectMemory(object):
         ps = obj_transform_to_pose(object_.transform, header)
         #print(ps)
         new_object['pose'] = tf2_geometry_msgs.do_transform_pose(ps, transform).pose
+        
+        if self.filter_by_z != 0:
+            if new_object['pose'].position.z > self.filter_by_z:
+                return
+        
         new_object['np_pose'] = np.array([new_object['pose'].position.x, new_object['pose'].position.y, new_object['pose'].position.z])
         r = np.abs(object_.rect.cornerTranslates[0].x - object_.rect.cornerTranslates[1].x)/2
         h = np.abs(object_.rect.cornerTranslates[1].y - object_.rect.cornerTranslates[2].y)
