@@ -86,8 +86,11 @@ class SimpleMapObject(object):
         fclusters = fcluster(Z, cluster_dist_thres, criterion='distance')        
         
         self.clusters = []
-        for id_ in set(fclusters):                        
-            cluster = self.all_poses[fclusters == id_]            
+        deleted_ids = []
+        
+        for id_ in set(fclusters):                                    
+            #print(id_, self.all_poses.shape)
+            cluster = np.copy(self.all_poses[fclusters == id_])
             # filter by size
             if cluster.shape[0] > cluster_min_size:
                 centroid = np.median(cluster[:,:3] , axis = 0)                
@@ -100,11 +103,21 @@ class SimpleMapObject(object):
                 new_cluster['width'] = np.mean(cluster[:,4])    
                 
                 if cluster.shape[0] > cluster_max_size:                    
-                    self.all_poses = np.delete(self.all_poses, np.argwhere(fclusters == id), axis = 0)                                        
+                    #self.all_poses = np.delete(self.all_poses, np.argwhere(fclusters == id_), axis = 0)                                        
+                    deleted_ids.append(id_)
+                    #print(np.argwhere(fclusters == id_))
+                    #remove = remove | np.argwhere(fclusters == id_)
                     self.saved_clusters.append(new_cluster)
                 else:
                     self.clusters.append(new_cluster)        
         
+        #print(self.all_poses.shape, fclusters.shape)
+        remove = np.zeros(self.all_poses.shape[0], dtype = bool)        
+        for id_ in deleted_ids:
+            remove = remove | (fclusters == id_)
+            
+        #print(remove)
+        self.all_poses = np.delete(self.all_poses, remove, axis = 0)                                        
         self.updated = True
         
     def validate(self):
@@ -124,6 +137,7 @@ class SimpleMapObject(object):
         for cl in self.saved_clusters:
             if not cl['mark']:
                 temp_list.append(cl)
+                # also it need to be excluded from all_data
         self.saved_clusters = temp_list
                             
             
@@ -139,7 +153,7 @@ class SimpleMapObject(object):
         # circle intersection
         r1 = np.hypot( cluster1['centroid'][0] - cluster2['centroid'][0], cluster1['centroid'][1] - cluster2['centroid'][1])        
         r2 = cluster1['width'] + cluster2['width']        
-        if r1 > r2:
+        if r1 > r2/2:
             return False
         
         return True

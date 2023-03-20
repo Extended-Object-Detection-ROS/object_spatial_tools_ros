@@ -3,8 +3,8 @@ import yaml
 
 if __name__ == '__main__':
     
-    yaml_file_path = '/home/anton/wheelchair_ws/src/wheelchair2/wheelchair2_config/config/localization/maps/gazebo_hall/semantic_map.yaml'
-    xml_file_path = '/home/anton/wheelchair_ws/src/wheelchair2/wheelchair2_config/config/localization/maps/gazebo_hall/semantic_map.xml'
+    yaml_file_path = '/home/anton/scene_testing_ws/src/tum_scene_testeting/config/map.yaml'
+    xml_file_path = '/home/anton/scene_testing_ws/src/tum_scene_testeting/config/map.xml'
     
     with open(yaml_file_path, 'rb') as infile:
         yaml_dict = yaml.load(infile, Loader=yaml.FullLoader)
