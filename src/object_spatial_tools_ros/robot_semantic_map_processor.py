@@ -270,7 +270,8 @@ class SimpleClusterObjectMapper(object):
             # get point in map frame
             ps = PointStamped()
             ps.header.frame_id = msg.header.frame_id
-            ps.header.stamp = rospy.Time(0)#.now()#msg.header.stamp
+            #ps.header.stamp = rospy.Time(0)#.now()#msg.header.stamp
+            ps.header.stamp = msg.header.stamp
             ps.point.x = detected_object.transform.translation.x
             ps.point.y = detected_object.transform.translation.y
             ps.point.z = detected_object.transform.translation.z
