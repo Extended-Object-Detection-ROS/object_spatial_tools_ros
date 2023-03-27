@@ -26,6 +26,7 @@ class OneClassObject(object):
             ts
             d
             r_yaw
+            cam 0,1,...
         '''        
         self.poses = np.array([first_pose])
         #print('init',self.poses.shape)
@@ -56,6 +57,7 @@ class OfflineSemanticMapper(object):
         ## name: OneClassObject
         self.detected_objects = {}
         
+        self.cameras = {}
         
         # ros stuff
         self.tf_buffer = tf2_ros.Buffer(rospy.Duration(100.0))  # tf buffer length
@@ -85,6 +87,9 @@ class OfflineSemanticMapper(object):
         if len(msg.objects) > 0:
             transform = get_common_transform(self.tf_buffer, msg.header, self.target_frame)
             robot_yaw = yaw_from_quaternion_msg(transform.transform.rotation)
+            
+            if not msg.header.frame_id in self.cameras:
+                self.cameras[msg.header.frame_id] = len(self.cameras)
                             
             for base_obj in msg.objects:
                 # skip objects with unit transform (distance unknown)
@@ -100,7 +105,9 @@ class OfflineSemanticMapper(object):
                             ps_transformed.position.z,
                             msg.header.stamp.to_sec(),
                             base_obj.transform.translation.z,
-                            robot_yaw]
+                            robot_yaw,
+                            self.cameras[msg.header.frame_id]]
+                
                 if base_obj.type_name in self.detected_objects:
                     self.detected_objects[base_obj.type_name].add_object(new_pose)
                 else:
