@@ -6,19 +6,27 @@ import numpy as np
 from geometry_msgs.msg import PointStamped
 import tf2_geometry_msgs
 import tf2_ros
-from object_spatial_tools_ros.utils import obj_transform_to_pose, get_common_transform
+from object_spatial_tools_ros.utils import obj_transform_to_pose, get_common_transform, yaw_from_quaternion_msg
 from sensor_msgs.msg import PointCloud2, PointField
 from sensor_msgs import point_cloud2
 import seaborn as sns
 import struct
 from std_msgs.msg import Header
+import yaml
+from std_srvs.srv import Trigger, TriggerResponse
 
 class OneClassObject(object):
     
     def __init__(self, first_pose):        
-        # each object: x, y, z, ts
-        #self.poses = np.array((0, 4))
-        #self.add_object(first_pose)
+        '''
+        each object: 
+            x, 
+            y, 
+            z, 
+            ts
+            d
+            r_yaw
+        '''        
         self.poses = np.array([first_pose])
         #print('init',self.poses.shape)
                 
@@ -37,10 +45,12 @@ class OfflineSemanticMapper(object):
         rospy.init_node('offline_semantic_mapper')
         
         # for params
-        self.target_frame = rospy.get_param('target_frame', "map")
+        self.target_frame = rospy.get_param('~target_frame', "map")
+        self.min_d = rospy.get_param('~min_d', 0.2)
+        self.best_d = rospy.get_param('~best_d', 2)
+        self.max_d = rospy.get_param('~max_d', 15)                
         
-        
-        
+        self.save_path = rospy.get_param('~save_path', '/tmp')
         # storage
         
         ## name: OneClassObject
@@ -61,6 +71,8 @@ class OfflineSemanticMapper(object):
         ## publishers
         self.point_cloud_pub = rospy.Publisher('~object_cloud', PointCloud2, queue_size = 1)
         
+        ## services
+        rospy.Service('~save_map', Trigger, self.save_to_file)        
         
         ## subscribers & timers
         rospy.Subscriber('simple_objects', SimpleObjectArray, self.so_cb)
@@ -72,24 +84,27 @@ class OfflineSemanticMapper(object):
             
         if len(msg.objects) > 0:
             transform = get_common_transform(self.tf_buffer, msg.header, self.target_frame)
-            
-        for base_obj in msg.objects:
-            # skip objects with unit transform (distance unknown)
-            if base_obj.transform.translation.z == 1:
-                continue
-            
-            # transform object to target frame            
-            ps = obj_transform_to_pose(base_obj.transform, msg.header)                
-            ps_transformed = tf2_geometry_msgs.do_transform_pose(ps, transform).pose
-            
-            new_pose = [ps_transformed.position.x,
-                        ps_transformed.position.y,
-                        ps_transformed.position.z,
-                        msg.header.stamp.to_sec()]
-            if base_obj.type_name in self.detected_objects:
-                self.detected_objects[base_obj.type_name].add_object(new_pose)
-            else:
-                self.detected_objects[base_obj.type_name] = OneClassObject(new_pose)
+            robot_yaw = yaw_from_quaternion_msg(transform.transform.rotation)
+                            
+            for base_obj in msg.objects:
+                # skip objects with unit transform (distance unknown)
+                if base_obj.transform.translation.z == 1 or base_obj.transform.translation.z > self.max_d or base_obj.transform.translation.z < self.min_d:
+                    continue      
+                
+                # transform object to target frame            
+                ps = obj_transform_to_pose(base_obj.transform, msg.header)                
+                ps_transformed = tf2_geometry_msgs.do_transform_pose(ps, transform).pose
+                
+                new_pose = [ps_transformed.position.x,
+                            ps_transformed.position.y,
+                            ps_transformed.position.z,
+                            msg.header.stamp.to_sec(),
+                            base_obj.transform.translation.z,
+                            robot_yaw]
+                if base_obj.type_name in self.detected_objects:
+                    self.detected_objects[base_obj.type_name].add_object(new_pose)
+                else:
+                    self.detected_objects[base_obj.type_name] = OneClassObject(new_pose)
                 
     def publish_cloud(self, event):
         points = []
@@ -99,9 +114,10 @@ class OfflineSemanticMapper(object):
             r = int(rgb[0]*255.0)
             g = int(rgb[1]*255.0)
             b = int(rgb[2]*255.0)
-            rgb = struct.unpack('I', struct.pack('BBBB', b, g, r, 255))[0]
-            #print(type(rgb), rgb)
-            for pose in xyz.tolist():
+            
+            for j, pose in enumerate(xyz.tolist()):
+                a = 1 - np.abs((self.best_d - obj.poses[j,4])/(self.max_d - self.best_d))
+                rgb = struct.unpack('I', struct.pack('BBBB', b, g, r, int(a * 255.0)))[0]            
                 points.append(pose + [rgb])        
         #print(points)
         if len(points):
@@ -111,6 +127,17 @@ class OfflineSemanticMapper(object):
             pc2 = point_cloud2.create_cloud(header, self.pc_fields, points)
                 
             self.point_cloud_pub.publish(pc2)
+            
+    def save_to_file(self, req):
+        file_name = self.save_path + '/raw_poses.yaml'
+        with open(file_name, 'w') as outfile:
+            dict_np = {a:b.poses for a, b in self.detected_objects.items()}            
+            yaml.dump(dict_np, outfile)
+            res = TriggerResponse()
+            res.success = True
+            res.message = f'raw poses saved to {file_name}'
+            return res
+        return []
             
     def run(self):
         rospy.spin()

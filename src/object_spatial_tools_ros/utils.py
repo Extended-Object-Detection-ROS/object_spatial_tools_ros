@@ -61,6 +61,12 @@ def quaternion_msg_from_yaw(yaw):
     msg.w = qu[3]
     return msg
 
+def yaw_from_quaternion_msg(quat_msg):
+    quat = [quat_msg.x, quat_msg.y, quat_msg.z, quat_msg.w]
+    _, _, yaw = tf.transformations.euler_from_quaternion(quat)
+    return yaw
+
+
 '''
 Calculates pairvise mahalanobis distances between new values x, old values y with correspondence to old values covariations
     x - new values, array of [K, N]
