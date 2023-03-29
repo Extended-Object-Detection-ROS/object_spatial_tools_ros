@@ -15,8 +15,10 @@ class OfflineMapper(object):
     Z = 2
     TS = 3
     D = 4
-    YAW = 5  
+    YAW = 5  # of camera
     CAM = 6
+    W = 7
+    H = 8
     
     N_CL = 0
     N_OL = 1
@@ -76,19 +78,37 @@ class OfflineMapper(object):
             
                 
     def plot_with_clusters(self, raw = True):
+        i = 0
+        palette = sns.color_palette("tab10", 10)
         for obj, data in self.RAW_MAP.items():
+            color = palette[i % len(palette)]
             if obj in self.objects_types.keys():
                 n_clusters = np.unique(self.clusters[obj]).shape[0]
-                if n_clusters > 10:
-                    palette = sns.color_palette("tab20", 20)
-                else:
-                    palette = sns.color_palette("tab10", 10)
+                #if n_clusters > 10:
+                    #palette = sns.color_palette("tab20", 20)
+                #else:
+                    #palette = sns.color_palette("tab10", 10)
                 for cl in range(n_clusters):
                     cluster = data[self.clusters[obj] == cl,:]
-                    color = palette[cl % len(palette)]
+                    #color = palette[cl % len(palette)]
                     if raw:
                         plt.plot(cluster[:,0], cluster[:,1], '.', label = f'{obj}#{cl}', color = color, alpha = 0.1)
-                    plt.plot(np.mean(cluster[:,0]), np.mean(cluster[:,1]), 'o', label = f'{obj}centroid #{cl}', color = color)
+                    mx, my = np.mean(cluster[:,0]), np.mean(cluster[:,1])
+                    plt.plot(mx, my, 'o', label = f'{obj} cent #{cl}', color = color)
+                    
+                    d = np.quantile(cluster[:,OfflineMapper.W], 0.5)
+                    d1 = np.quantile(cluster[:,OfflineMapper.W], 0.25)
+                    d2 = np.quantile(cluster[:,OfflineMapper.W], 0.75)
+                    
+                    circle = plt.Circle((mx, my), d/2, color=color, fill = False, ls = '-')
+                    circle1 = plt.Circle((mx, my), d1/2, color=color, fill = False, ls = ':')
+                    circle2 = plt.Circle((mx, my), d2/2, color=color, fill = False, ls = ':')
+                    
+                    plt.gca().add_patch(circle)
+                    plt.gca().add_patch(circle1)
+                    plt.gca().add_patch(circle2)
+                    
+                i+=1
                     
         plt.legend()
         plt.gca().axis('equal')
@@ -157,4 +177,5 @@ if __name__ == '__main__':
     
         
         
+
 

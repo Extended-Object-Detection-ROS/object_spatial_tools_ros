@@ -86,7 +86,7 @@ class OfflineSemanticMapper(object):
             
         if len(msg.objects) > 0:
             transform = get_common_transform(self.tf_buffer, msg.header, self.target_frame)
-            robot_yaw = yaw_from_quaternion_msg(transform.transform.rotation)
+            camera_yaw = yaw_from_quaternion_msg(transform.transform.rotation)
             
             if not msg.header.frame_id in self.cameras:
                 self.cameras[msg.header.frame_id] = len(self.cameras)
@@ -100,13 +100,22 @@ class OfflineSemanticMapper(object):
                 ps = obj_transform_to_pose(base_obj.transform, msg.header)                
                 ps_transformed = tf2_geometry_msgs.do_transform_pose(ps, transform).pose
                 
+                v1 = base_obj.rect.cornerTranslates[0]
+                v2 = base_obj.rect.cornerTranslates[1]
+                v3 = base_obj.rect.cornerTranslates[2]            
+            
+                width = np.sqrt((v1.x - v2.x)**2 + (v1.y - v2.y)**2 + (v1.z - v2.z)**2)
+                height = np.sqrt((v3.x - v2.x)**2 + (v3.y - v2.y)**2 + (v3.z - v2.z)**2)
+                
                 new_pose = [ps_transformed.position.x,
                             ps_transformed.position.y,
                             ps_transformed.position.z,
                             msg.header.stamp.to_sec(),
                             base_obj.transform.translation.z,
-                            robot_yaw,
-                            self.cameras[msg.header.frame_id]]
+                            camera_yaw,
+                            self.cameras[msg.header.frame_id],
+                            width,
+                            height]
                 
                 if base_obj.type_name in self.detected_objects:
                     self.detected_objects[base_obj.type_name].add_object(new_pose)
